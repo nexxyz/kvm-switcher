@@ -3,6 +3,8 @@ artifacts/
 
 # Build outputs
 **/bin/
+!packaging/debian/usr/bin/
+!packaging/debian/usr/bin/kvm-switch
 **/obj/
 **/target/
 **/publish/
