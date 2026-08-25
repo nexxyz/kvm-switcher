@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+
+action=${1:-}
+case "$action" in
+    configure)
+        if ! getent group kvmswitch >/dev/null 2>&1; then
+            addgroup --system kvmswitch >/dev/null 2>&1 || exit 1
+        fi
+        ;;
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+    *)
+        echo "postinst: unsupported or missing action: $action" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

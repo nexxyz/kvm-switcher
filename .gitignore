@@ -1,0 +1,24 @@
+# Automated FAT artifacts
+artifacts/
+
+# Build outputs
+**/bin/
+**/obj/
+**/target/
+**/publish/
+
+# Python environments and caches
+**/.venv/
+**/__pycache__/
+*.py[cod]
+**/.pytest_cache/
+
+# Local portable configuration
+linux/config.json
+**/config.json
+!packaging/debian/config.json
+
+# Editor and OS files
+.vs/
+.vscode/
+.DS_Store

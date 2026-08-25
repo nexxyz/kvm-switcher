@@ -1,0 +1,229 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows build and tests
+    runs-on: windows-latest
+    needs: portable
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Debian payload input
+        uses: actions/download-artifact@v4
+        with:
+          name: KvmSwitcher-portable
+          path: artifacts/input/portable
+
+      - name: Verify and stage Debian payload input
+        shell: pwsh
+        run: |
+          $deb = 'artifacts/input/portable/kvm-switcher_0.8.0-1_all.deb'
+          $sums = 'artifacts/input/portable/SHA256SUMS-debian.txt'
+          $onlineInstaller = 'artifacts/input/portable/install-kvm-switcher.sh'
+          $debianBundle = 'artifacts/input/portable/kvm-switcher-debian.zip'
+          if (-not (Test-Path $deb) -or -not (Test-Path $sums) -or -not (Test-Path $onlineInstaller) -or -not (Test-Path $debianBundle)) { throw 'Missing Debian release asset input' }
+          $lines = @(Get-Content $sums | Where-Object { $_.Trim().Length -ne 0 })
+          if ($lines.Count -ne 1 -or $lines[0] -notmatch '^[0-9a-f]{64}\s+kvm-switcher_0\.8\.0-1_all\.deb$') { throw 'Invalid Debian payload checksum manifest' }
+          $actual = (Get-FileHash $deb -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne (($lines[0] -split '\s+')[0])) { throw 'Debian payload checksum mismatch' }
+          New-Item -ItemType Directory -Path artifacts -Force | Out-Null
+          Copy-Item $deb artifacts/kvm-switcher_0.8.0-1_all.deb -Force
+          Copy-Item $sums artifacts/SHA256SUMS-debian.txt -Force
+          Copy-Item $onlineInstaller artifacts/install-kvm-switcher.sh -Force
+          Copy-Item $debianBundle artifacts/kvm-switcher-debian.zip -Force
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install pinned Inno Setup
+        shell: powershell
+        run: choco install innosetup --version=6.7.1 --no-progress --yes
+
+      - name: Restore
+        run: dotnet restore KvmSwitcher.sln
+
+      - name: Build
+        run: dotnet build KvmSwitcher.sln -c Release -warnaserror --no-restore
+
+      - name: Test
+        run: dotnet test KvmSwitcher.sln -c Release --no-build --no-restore
+
+      - name: Publish win-x64
+        shell: pwsh
+        run: |
+          dotnet publish src/KvmSwitcher/KvmSwitcher.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained false `
+            -o artifacts/staging/windows
+
+      - name: Validate publish staging
+        shell: pwsh
+        run: |
+          Copy-Item artifacts/kvm-switcher_0.8.0-1_all.deb artifacts/staging/windows/kvm-switcher_0.8.0-1_all.deb -Force
+          Copy-Item LICENSE artifacts/staging/windows/LICENSE -Force
+          Copy-Item THIRD-PARTY-NOTICES.txt artifacts/staging/windows/THIRD-PARTY-NOTICES.txt -Force
+          $required = @('KvmSwitcher.exe','KvmSwitcher.dll','KvmSwitcher.deps.json','KvmSwitcher.runtimeconfig.json','HidSharp.dll','kvm-switcher_0.8.0-1_all.deb','LICENSE','THIRD-PARTY-NOTICES.txt')
+          foreach ($name in $required) { if (-not (Test-Path "artifacts/staging/windows/$name")) { throw "Missing publish file: $name" } }
+          Remove-Item artifacts/staging/windows/*.pdb -Force -ErrorAction SilentlyContinue
+          foreach ($file in @(Get-ChildItem artifacts/staging/windows -File)) { if ($required -notcontains $file.Name) { throw "Unexpected publish file: $($file.Name)" } }
+          if (@(Get-ChildItem artifacts/staging/windows -Directory -Recurse).Count -ne 0) { throw 'Unexpected publish directory' }
+
+      - name: Compile installer from publish staging
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File installer/build-installer.ps1
+
+      - name: Validate and hash Windows artifacts
+        shell: pwsh
+        run: |
+          Compress-Archive -Path artifacts/staging/windows/* -DestinationPath artifacts/KvmSwitcher-win-x64.zip
+          if (-not (Test-Path artifacts/KvmSwitcher-Setup.exe)) { throw 'Missing installer output' }
+          $zipHash = (Get-FileHash artifacts/KvmSwitcher-win-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          $setupHash = (Get-FileHash artifacts/KvmSwitcher-Setup.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $onlineInstallerHash = (Get-FileHash artifacts/install-kvm-switcher.sh -Algorithm SHA256).Hash.ToLowerInvariant()
+          $debianBundleHash = (Get-FileHash artifacts/kvm-switcher-debian.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          @(
+            "$setupHash  KvmSwitcher-Setup.exe",
+            "$zipHash  KvmSwitcher-win-x64.zip",
+            "$onlineInstallerHash  install-kvm-switcher.sh",
+            "$debianBundleHash  kvm-switcher-debian.zip"
+          ) | Set-Content artifacts/SHA256SUMS.txt -Encoding ascii
+          $expectedNames = @('KvmSwitcher-Setup.exe','KvmSwitcher-win-x64.zip','install-kvm-switcher.sh','kvm-switcher-debian.zip')
+          $manifestLines = @(Get-Content artifacts/SHA256SUMS.txt | Where-Object { $_.Trim().Length -ne 0 })
+          if ($manifestLines.Count -ne 4) { throw 'SHA256SUMS.txt must contain exactly four release asset hashes' }
+          $seen = @{}
+          foreach ($line in $manifestLines) {
+            $parts = $line.Trim() -split '\s+'
+            if ($parts.Count -ne 2 -or $parts[0] -notmatch '^[0-9a-f]{64}$' -or $expectedNames -notcontains $parts[1] -or $seen.ContainsKey($parts[1])) { throw 'Invalid or duplicate SHA256SUMS.txt entry' }
+            $seen[$parts[1]] = $parts[0]
+          }
+          foreach ($name in $expectedNames) { if (-not $seen.ContainsKey($name)) { throw "Missing SHA256SUMS.txt entry: $name" } }
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KvmSwitcher-win-x64
+          path: |
+            artifacts/KvmSwitcher-win-x64.zip
+            artifacts/KvmSwitcher-Setup.exe
+            artifacts/SHA256SUMS.txt
+            artifacts/install-kvm-switcher.sh
+            artifacts/kvm-switcher-debian.zip
+            artifacts/kvm-switcher_0.8.0-1_all.deb
+            artifacts/SHA256SUMS-debian.txt
+          if-no-files-found: error
+
+  portable:
+    name: Portable Python tests and bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Test portable CLI
+        working-directory: linux
+        run: |
+          python -m unittest discover -s tests -p 'test_*.py'
+          python -m py_compile kvmSwitcher.py tests/test_kvm_switcher.py
+          sh -n install.sh
+          python kvmSwitcher.py --help >/dev/null
+
+      - name: Portable editable-install smoke
+        working-directory: linux
+        shell: bash
+        run: |
+          set -eu
+          cp config.example.json config.json
+          venv_dir="$(mktemp -d)"
+          trap 'rm -rf "$venv_dir" config.json' EXIT
+          python -m venv "$venv_dir"
+          "$venv_dir/bin/python" -m pip install --no-deps -e .
+          "$venv_dir/bin/kvm-switch" --help >/dev/null
+          "$venv_dir/bin/python" - <<'PY'
+          from pathlib import Path
+          import kvmSwitcher
+
+          expected = Path.cwd().resolve() / "config.json"
+          assert kvmSwitcher._default_config_path() == expected
+          PY
+
+      - name: Build Debian package
+        shell: bash
+        run: |
+          set -eu
+          sh -n scripts/Build-DebianPackage.sh scripts/Test-DebianBundleInstall.sh scripts/Test-DebianPackageLifecycle.sh scripts/install-kvm-switcher.sh.in scripts/Build-OnlineInstaller.sh scripts/Test-OnlineInstaller.sh linux/debian-bundle/install.sh
+          sh scripts/Test-DebianBundleInstall.sh
+          SOURCE_DATE_EPOCH=0 sh scripts/Build-DebianPackage.sh
+          timeout 120s sh scripts/Test-DebianPackageLifecycle.sh artifacts/kvm-switcher_0.8.0-1_all.deb
+          dpkg-deb --info artifacts/kvm-switcher_0.8.0-1_all.deb
+          dpkg-deb --contents artifacts/kvm-switcher_0.8.0-1_all.deb
+          test -s artifacts/kvm-switcher_0.8.0-1_all.deb
+          test "$(wc -l < artifacts/SHA256SUMS-debian.txt)" -eq 1
+          (cd artifacts && sha256sum -c SHA256SUMS-debian.txt)
+          sh scripts/Build-OnlineInstaller.sh
+          sh scripts/Test-OnlineInstaller.sh
+
+      - name: Build portable bundle
+        run: |
+          mkdir -p artifacts/portable/udev
+          cp linux/kvmSwitcher.py artifacts/portable/
+          cp linux/config.example.json artifacts/portable/config.json
+          cp linux/install.sh artifacts/portable/
+          cp linux/pyproject.toml artifacts/portable/
+          cp linux/README.md artifacts/portable/
+          cp LICENSE artifacts/portable/
+          cp linux/requirements.txt artifacts/portable/
+          cp linux/udev/99-kvm-switcher.rules artifacts/portable/udev/
+          (cd artifacts/portable && zip -r ../KvmSwitcher-portable.zip .)
+          (cd artifacts && sha256sum KvmSwitcher-portable.zip > SHA256SUMS-portable.txt)
+
+      - name: Upload portable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KvmSwitcher-portable
+          path: |
+            artifacts/KvmSwitcher-portable.zip
+            artifacts/SHA256SUMS-portable.txt
+            artifacts/kvm-switcher_0.8.0-1_all.deb
+            artifacts/SHA256SUMS-debian.txt
+            artifacts/install-kvm-switcher.sh
+            artifacts/kvm-switcher-debian.zip
+          if-no-files-found: error
+
+  release-surface:
+    name: Release surface hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reject internal work artifacts
+        shell: bash
+        run: |
+          set -eu
+          for path in .opencode .slim lab openspec poc research; do
+            if [ -e "$path" ]; then
+              echo "Internal path must not be committed: $path" >&2
+              exit 1
+            fi
+          done
+          test -f README.md
+          test -f LICENSE
+          test -f THIRD-PARTY-NOTICES.txt
+          test -f AGENTS.md
+          test -f docs/MANUAL_FAT.md
+          test -f scripts/Build-OnlineInstaller.sh
+          test -f scripts/Test-OnlineInstaller.sh
+          test -f scripts/install-kvm-switcher.sh.in
+          test -f assets/KvmSwitcher.ico

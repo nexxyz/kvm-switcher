@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kvm-switcher"
+version = "0.8.0"
+description = "Portable one-shot KVM Switcher"
+requires-python = ">=3.9"
+dependencies = ["hidapi>=0.9,<0.16"]
+
+[project.scripts]
+kvm-switch = "kvmSwitcher:main"
+
+[tool.setuptools]
+py-modules = ["kvmSwitcher"]

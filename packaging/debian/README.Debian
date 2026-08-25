@@ -1,0 +1,72 @@
+kvm-switcher for Debian and Raspberry Pi OS
+================================================
+
+This package installs the fixed Linux command and udev permission rules for
+both hidraw and USB/libusb transports on the validated MSI 491CQPX. Only MSI
+491CQPX is validated; other monitor models are experimental and untested.
+
+The Debian maintainer is nexxyz <nexxyz@users.noreply.github.com>. The source
+project and release asset location are:
+
+  https://github.com/nexxyz/kvm-switcher
+
+Install a local package with:
+
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=--force-confold install ./kvm-switcher_0.8.0-1_all.deb
+
+Add the intended headless user to the device group, then log in again:
+
+  sudo adduser USER kvmswitch
+
+Unplug and replug the monitor USB path after the group change. The package
+post-install action only ensures the `kvmswitch` group and does not reload or
+trigger udev. After an install or upgrade, reboot or use the attended
+`sudo udevadm control --reload-rules` command, then unplug and replug the
+monitor USB path.
+
+The shared configuration is:
+
+  /etc/kvm-switcher/config.json
+
+Examples:
+
+  kvm-switch
+  kvm-switch --profile Raspberry
+  kvm-switch --input hdmi1 --kvm typec
+  kvm-switch --input dp --kvm upstream
+
+Bare `kvm-switch` changes the route using the one target marked
+`"default": true`; it is not a probe. Legacy configs without a default remain
+valid for named profiles, but need exactly one explicit true value for bare mode.
+
+After the USB path has settled, run the delayed no-write diagnostic when needed:
+
+  sleep 15; kvm-switch --probe-hardware 2>&1 | tee ~/kvm-switcher-probe.log
+
+The probe enumerates exactly one fixed interface, opens and closes it, and
+performs no report I/O.
+
+The launcher sets KVM_SWITCHER_CONFIG to the package configuration only when
+the caller has not already set that variable. Keep the monitor OSD available
+for manual recovery and perform attended validation before relying on a new
+unit or model.
+
+Remove the package but keep configuration:
+
+  sudo apt remove kvm-switcher
+
+Purge the package and let dpkg remove its registered configuration file:
+
+  sudo apt purge kvm-switcher
+
+The package does not add arbitrary users or manually delete the kvmswitch group
+or user configuration during removal. The release install helpers add only the
+invoking account after a successful package installation.
+
+The Debian package default under `/etc` is intentionally frozen. Portable and
+exported example configs may evolve independently, but an existing system
+config always wins during helper upgrades. A one-time upgrade from an older
+package that installed a postrm may still run that old removal hook; keep
+storage stable and disconnect the HDMI/monitor USB path during that transition.
+Future package upgrades have no postrm action. The helper never applies an
+exported config implicitly; use `sh ./install.sh --apply-config` deliberately.
