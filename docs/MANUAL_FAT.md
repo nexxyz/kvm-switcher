@@ -48,14 +48,14 @@ before each separate test.
   `https://github.com/nexxyz/kvm-switcher/releases/latest/download/install-kvm-switcher.sh`
   and names the latest bundle fallback URL.
 - Confirm the Debian bundle contains exactly
-  `kvm-switcher_0.8.0-1_all.deb`, `config.json`, `install.sh`, `README.md`,
+  `kvm-switcher_0.8.1-1_all.deb`, `config.json`, `install.sh`, `README.md`,
   `LICENSE`, and `SHA256SUMS`, with the internal manifest containing only the
   package and config hashes.
 - Confirm the release asset directory contains exactly the four entries in
   `SHA256SUMS.txt`: `KvmSwitcher-Setup.exe`, `KvmSwitcher-win-x64.zip`,
   `install-kvm-switcher.sh`, and `kvm-switcher-debian.zip`, all with lowercase
   SHA256 values. Confirm `SHA256SUMS-debian.txt` contains exactly one lowercase
-  hash for `kvm-switcher_0.8.0-1_all.deb`.
+  hash for `kvm-switcher_0.8.1-1_all.deb`.
 - Confirm the Windows ZIP and installed setup directory each contain the root
   `LICENSE` and `THIRD-PARTY-NOTICES.txt` files, and the portable ZIP contains
   the root `LICENSE`.
@@ -64,7 +64,7 @@ before each separate test.
   use the extracted `kvm-switcher-debian.zip` and confirm `sh ./install.sh` is
   the fallback command. The bundle avoids GitHub during installation, but apt
   may still need distro dependencies. For the frozen release, the immutable
-  package and bundle use the `v0.8.0` tag; do not mix release tags.
+  package and bundle use the `v0.8.1` tag; do not mix release tags.
 - Confirm `sh ./install.sh` preserves the package/current conffile and
   `sh ./install.sh --apply-config` is the only deliberate exported-config replacement.
 - Re-run setup with startup selected and confirm KVM Switcher starts after the next

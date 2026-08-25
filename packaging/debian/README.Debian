@@ -12,7 +12,7 @@ project and release asset location are:
 
 Install a local package with:
 
-  sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=--force-confold install ./kvm-switcher_0.8.0-1_all.deb
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=--force-confold install ./kvm-switcher_0.8.1-1_all.deb
 
 Add the intended headless user to the device group, then log in again:
 

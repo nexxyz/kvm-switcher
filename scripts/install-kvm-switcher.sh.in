@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-PACKAGE_NAME='kvm-switcher_0.8.0-1_all.deb'
+PACKAGE_NAME='kvm-switcher_0.8.1-1_all.deb'
 PACKAGE_URL='@PACKAGE_URL@'
 BUNDLE_URL='@BUNDLE_URL@'
 EXPECTED_SHA256='@DEB_SHA256@'
@@ -20,7 +20,7 @@ recommend_bundle() {
 
 [ "$#" -eq 0 ] || fail 'this installer does not accept arguments'
 
-for command_name in wget mktemp sha256sum sudo env apt-get id adduser; do
+for command_name in wget mktemp sha256sum sudo env apt-get id; do
     command -v "$command_name" >/dev/null 2>&1 || fail "required command is missing: $command_name"
 done
 

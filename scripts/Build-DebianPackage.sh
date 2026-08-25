@@ -48,7 +48,7 @@ source_config_hash=$(sha256sum "$SOURCE_ROOT/config.json" | awk '{print $1}')
 [ "$source_config_hash" = "$FROZEN_CONFIG_SHA256" ] || fail "frozen Debian config hash does not match the approved pin"
 
 upstream_version=$(sed -n 's/^version = "\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)"$/\1/p' "$PYPROJECT" | sed -n '1p')
-[ "$upstream_version" = "0.8.0" ] || fail "expected linux/pyproject.toml version 0.8.0"
+[ "$upstream_version" = "0.8.1" ] || fail "expected linux/pyproject.toml version 0.8.1"
 debian_version="$upstream_version-1"
 OUTPUT="$ARTIFACT_ROOT/kvm-switcher_${debian_version}_all.deb"
 

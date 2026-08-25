@@ -7,9 +7,9 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <RootNamespace>KvmSwitcher</RootNamespace>
     <AssemblyName>KvmSwitcher</AssemblyName>
-    <Version>0.8.0</Version>
-    <FileVersion>0.8.0.0</FileVersion>
-    <AssemblyVersion>0.8.0.0</AssemblyVersion>
+    <Version>0.8.1</Version>
+    <FileVersion>0.8.1.0</FileVersion>
+    <AssemblyVersion>0.8.1.0</AssemblyVersion>
     <Title>KVM Switcher</Title>
     <Product>KVM Switcher</Product>
     <Company>KVM Switcher</Company>

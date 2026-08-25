@@ -5,7 +5,7 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd -P)
 BUILD_SCRIPT="$SCRIPT_DIR/Build-OnlineInstaller.sh"
 TEMPLATE="$SCRIPT_DIR/install-kvm-switcher.sh.in"
-DEB_NAME='kvm-switcher_0.8.0-1_all.deb'
+DEB_NAME='kvm-switcher_0.8.1-1_all.deb'
 DEB_PATH="$REPO_ROOT/artifacts/$DEB_NAME"
 BOOTSTRAP="$REPO_ROOT/artifacts/install-kvm-switcher.sh"
 BUNDLE="$REPO_ROOT/artifacts/kvm-switcher-debian.zip"
@@ -72,7 +72,7 @@ case "$FAKE_MODE" in
     download-failure) exit 8 ;;
     empty) : > "$output_path" ;;
     hash-mismatch) printf '%s\n' 'not the Debian package' > "$output_path" ;;
-    success|apt-failure) cp "$TEST_PACKAGE" "$output_path" ;;
+    success|apt-failure|apt-installs-adduser) cp "$TEST_PACKAGE" "$output_path" ;;
     *) exit 9 ;;
 esac
 EOF
@@ -119,6 +119,13 @@ cat > "$FAKE_BIN/apt-get" <<'EOF'
 #!/bin/sh
 printf 'apt-get %s\n' "$*" >> "$FAKE_LOG"
 [ "$FAKE_MODE" != apt-failure ] || exit 12
+if [ "$FAKE_MODE" = apt-installs-adduser ]; then
+    cat > "$FAKE_BIN/adduser" <<'ADDUSER'
+#!/bin/sh
+printf 'adduser %s\n' "$*" >> "$FAKE_LOG"
+ADDUSER
+    chmod 0755 "$FAKE_BIN/adduser"
+fi
 EOF
 
 cat > "$FAKE_BIN/adduser" <<'EOF'
@@ -139,8 +146,8 @@ deb_hash_line=$($REAL_SHA256SUM "$DEB_PATH")
 deb_hash=${deb_hash_line%% *}
 config_hash_line=$($REAL_SHA256SUM "$CONFIG_SOURCE")
 config_hash=${config_hash_line%% *}
-PACKAGE_URL="https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.0/$DEB_NAME"
-BUNDLE_URL='https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.0/kvm-switcher-debian.zip'
+PACKAGE_URL="https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.1/$DEB_NAME"
+BUNDLE_URL='https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.1/kvm-switcher-debian.zip'
 contains "$PACKAGE_URL" "$BOOTSTRAP"
 contains "$BUNDLE_URL" "$BOOTSTRAP"
 contains "$deb_hash" "$BOOTSTRAP"
@@ -169,6 +176,9 @@ reset_case() {
     export FAKE_MODE TEST_ID_UID
     : > "$FAKE_LOG"
     : > "$TEMP_PATH_LOG"
+    if [ "$FAKE_MODE" = apt-installs-adduser ]; then
+        rm -f "$FAKE_BIN/adduser"
+    fi
 }
 
 run_failure() {
@@ -187,6 +197,19 @@ contains 'KVM Switcher installed successfully.' "$TMP_ROOT/success.out"
 [ "$(count_log_entries wget)" -eq 1 ] || fail 'success case did not make exactly one wget call'
 [ "$(count_log_entries sudo)" -eq 2 ] || fail 'success case did not make exactly two sudo calls'
 contains "adduser $TEST_ACCOUNT kvmswitch" "$FAKE_LOG"
+assert_temp_cleanup
+
+reset_case apt-installs-adduser
+[ ! -e "$FAKE_BIN/adduser" ] || fail 'regression setup unexpectedly has adduser before apt'
+if PATH="$FAKE_BIN:/usr/bin:/bin" command -v adduser >/dev/null 2>&1; then
+    fail 'regression PATH unexpectedly has adduser before apt'
+fi
+if ! PATH="$FAKE_BIN:/usr/bin:/bin" sh "$BOOTSTRAP" > "$TMP_ROOT/apt-installs-adduser.out" 2>&1; then
+    fail 'installer did not succeed after apt supplied adduser'
+fi
+contains 'KVM Switcher installed successfully.' "$TMP_ROOT/apt-installs-adduser.out"
+contains "adduser $TEST_ACCOUNT kvmswitch" "$FAKE_LOG"
+[ "$(count_log_entries sudo)" -eq 2 ] || fail 'apt-supplied adduser case did not complete both sudo calls'
 assert_temp_cleanup
 
 reset_case download-failure
