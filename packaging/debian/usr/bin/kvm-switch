@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+
+if [ -z "${KVM_SWITCHER_CONFIG+x}" ]; then
+    KVM_SWITCHER_CONFIG=/etc/kvm-switcher/config.json
+    export KVM_SWITCHER_CONFIG
+fi
+
+exec /usr/bin/python3 /usr/lib/kvm-switcher/kvmSwitcher.py "$@"
