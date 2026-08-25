@@ -21,7 +21,7 @@ On Debian or Raspberry Pi OS, install the locally built package without pip or
 a bundled wheel:
 
 ```sh
-sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=--force-confold install ./kvm-switcher_0.8.0-1_all.deb
+sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=--force-confold install ./kvm-switcher_0.8.1-1_all.deb
 sudo adduser "$USER" kvmswitch
 ```
 

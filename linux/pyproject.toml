@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kvm-switcher"
-version = "0.8.0"
+version = "0.8.1"
 description = "Portable one-shot KVM Switcher"
 requires-python = ">=3.9"
 dependencies = ["hidapi>=0.9,<0.16"]

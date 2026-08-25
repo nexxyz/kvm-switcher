@@ -6,7 +6,7 @@ compatibility with another monitor model.
 
 This is the Debian/`apt` bundle, separate from the Windows
 `KvmSwitcher-win-x64.zip` and the portable Python `KvmSwitcher-portable.zip`.
-It contains `kvm-switcher_0.8.0-1_all.deb`, the root `LICENSE`, and is not a
+It contains `kvm-switcher_0.8.1-1_all.deb`, the root `LICENSE`, and is not a
 portable Python bundle.
 The release fallback ZIP contains exactly the package, `config.json`,
 `install.sh`, this `README.md`, `LICENSE`, and `SHA256SUMS`. The internal

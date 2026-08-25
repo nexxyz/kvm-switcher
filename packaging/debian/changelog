@@ -1,3 +1,9 @@
+kvm-switcher (0.8.1-1) unstable; urgency=medium
+
+  * Allow apt to install the adduser dependency during online setup.
+
+ -- nexxyz <nexxyz@users.noreply.github.com>  Tue, 25 Aug 2026 21:03:17 +0000
+
 kvm-switcher (0.8.0-1) unstable; urgency=medium
 
   * Make Debian upgrades deterministic and preserve existing configuration.

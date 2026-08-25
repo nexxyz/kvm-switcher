@@ -41,7 +41,7 @@ function Assert-ExactOnlineBundle {
     param([string]$Path)
 
     Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $expectedEntries = @("kvm-switcher_0.8.0-1_all.deb", "config.json", "install.sh", "README.md", "LICENSE", "SHA256SUMS")
+    $expectedEntries = @("kvm-switcher_0.8.1-1_all.deb", "config.json", "install.sh", "README.md", "LICENSE", "SHA256SUMS")
     $archive = [System.IO.Compression.ZipFile]::OpenRead($Path)
     try {
         $entries = @($archive.Entries)
@@ -312,7 +312,7 @@ Write-Host "> WSL Debian package build"
 if ($LASTEXITCODE -ne 0) {
     Fail-Fat "Debian package build failed in WSL"
 }
-$debianPackagePath = Join-Path $artifactRoot "kvm-switcher_0.8.0-1_all.deb"
+$debianPackagePath = Join-Path $artifactRoot "kvm-switcher_0.8.1-1_all.deb"
 $debianSumsPath = Join-Path $artifactRoot "SHA256SUMS-debian.txt"
 Assert-File -Path $debianPackagePath -Label "Debian package"
 Assert-File -Path $debianSumsPath -Label "Debian SHA256SUMS"
@@ -320,7 +320,7 @@ if ((Get-Item -LiteralPath $debianPackagePath).Length -le 0) {
     Fail-Fat "Debian package is empty"
 }
 $debianSumLines = @(Get-Content -LiteralPath $debianSumsPath | Where-Object { $_.Trim().Length -ne 0 })
-if ($debianSumLines.Count -ne 1 -or $debianSumLines[0] -notmatch '^[0-9a-f]{64}\s+kvm-switcher_0\.8\.0-1_all\.deb$') {
+if ($debianSumLines.Count -ne 1 -or $debianSumLines[0] -notmatch '^[0-9a-f]{64}\s+kvm-switcher_0\.8\.1-1_all\.deb$') {
     Fail-Fat "Debian SHA256SUMS must contain exactly one lowercase package hash"
 }
 $debianManifestParts = $debianSumLines[0].Trim() -split "\s+"
@@ -333,7 +333,7 @@ Write-Host "> WSL Debian package lifecycle fixture (120s deadline)"
 if ($LASTEXITCODE -ne 0) {
     Fail-Fat "GNU timeout is required in WSL for the Debian lifecycle fixture"
 }
-$wslLifecyclePackagePath = $wslRoot + "/artifacts/kvm-switcher_0.8.0-1_all.deb"
+$wslLifecyclePackagePath = $wslRoot + "/artifacts/kvm-switcher_0.8.1-1_all.deb"
 & $wslCommand.Source -- timeout 120s sh $wslDebianLifecyclePath $wslLifecyclePackagePath
 if ($LASTEXITCODE -ne 0) {
     Fail-Fat "Debian package lifecycle fixture failed or exceeded its 120s deadline"
@@ -359,11 +359,11 @@ if ((Get-Item -LiteralPath $onlineInstallerPath).Length -le 0 -or
 Assert-ExactOnlineBundle -Path $debianBundlePath
 
 Invoke-Tool -Label "framework-dependent win-x64 publish" -FilePath $dotnet -Arguments @("publish", "src\KvmSwitcher\KvmSwitcher.csproj", "-c", "Release", "-r", "win-x64", "--self-contained", "false", "-o", $publishRoot) -WorkingDirectory $repoRoot
-Copy-Item -LiteralPath $debianPackagePath -Destination (Join-Path $publishRoot "kvm-switcher_0.8.0-1_all.deb") -Force
+Copy-Item -LiteralPath $debianPackagePath -Destination (Join-Path $publishRoot "kvm-switcher_0.8.1-1_all.deb") -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "LICENSE") -Destination (Join-Path $publishRoot "LICENSE") -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "THIRD-PARTY-NOTICES.txt") -Destination (Join-Path $publishRoot "THIRD-PARTY-NOTICES.txt") -Force
 
-$requiredPublishFiles = @("KvmSwitcher.exe", "KvmSwitcher.dll", "KvmSwitcher.deps.json", "KvmSwitcher.runtimeconfig.json", "HidSharp.dll", "kvm-switcher_0.8.0-1_all.deb", "LICENSE", "THIRD-PARTY-NOTICES.txt")
+$requiredPublishFiles = @("KvmSwitcher.exe", "KvmSwitcher.dll", "KvmSwitcher.deps.json", "KvmSwitcher.runtimeconfig.json", "HidSharp.dll", "kvm-switcher_0.8.1-1_all.deb", "LICENSE", "THIRD-PARTY-NOTICES.txt")
 foreach ($fileName in $requiredPublishFiles) {
     Assert-File -Path (Join-Path $publishRoot $fileName) -Label ("published " + $fileName)
 }
@@ -397,7 +397,7 @@ Compress-Archive -Path (Join-Path $publishRoot "*") -DestinationPath $zipPath -C
 Assert-File -Path $zipPath -Label "Windows ZIP"
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$expectedZipEntries = @("KvmSwitcher.exe", "KvmSwitcher.dll", "KvmSwitcher.deps.json", "KvmSwitcher.runtimeconfig.json", "HidSharp.dll", "kvm-switcher_0.8.0-1_all.deb", "LICENSE", "THIRD-PARTY-NOTICES.txt")
+$expectedZipEntries = @("KvmSwitcher.exe", "KvmSwitcher.dll", "KvmSwitcher.deps.json", "KvmSwitcher.runtimeconfig.json", "HidSharp.dll", "kvm-switcher_0.8.1-1_all.deb", "LICENSE", "THIRD-PARTY-NOTICES.txt")
 $zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
 try {
     $zipEntries = @($zip.Entries)

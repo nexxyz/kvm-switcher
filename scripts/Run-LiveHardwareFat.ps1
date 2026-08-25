@@ -48,7 +48,7 @@ function Assert-ExactZip {
         "KvmSwitcher.deps.json",
         "KvmSwitcher.runtimeconfig.json",
         "HidSharp.dll",
-        "kvm-switcher_0.8.0-1_all.deb",
+        "kvm-switcher_0.8.1-1_all.deb",
         "LICENSE",
         "THIRD-PARTY-NOTICES.txt"
     )
@@ -77,7 +77,7 @@ function Assert-ExactOnlineBundle {
     param([string]$Path)
 
     Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $expectedEntries = @("kvm-switcher_0.8.0-1_all.deb", "config.json", "install.sh", "README.md", "LICENSE", "SHA256SUMS")
+    $expectedEntries = @("kvm-switcher_0.8.1-1_all.deb", "config.json", "install.sh", "README.md", "LICENSE", "SHA256SUMS")
     $archive = [System.IO.Compression.ZipFile]::OpenRead($Path)
     try {
         $entries = @($archive.Entries)

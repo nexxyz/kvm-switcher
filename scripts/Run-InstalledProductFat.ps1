@@ -76,7 +76,7 @@ function Read-Manifest {
 function Assert-ExactZip {
     param([string]$Path)
     Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $expected = @("KvmSwitcher.exe", "KvmSwitcher.dll", "KvmSwitcher.deps.json", "KvmSwitcher.runtimeconfig.json", "HidSharp.dll", "kvm-switcher_0.8.0-1_all.deb", "LICENSE", "THIRD-PARTY-NOTICES.txt")
+    $expected = @("KvmSwitcher.exe", "KvmSwitcher.dll", "KvmSwitcher.deps.json", "KvmSwitcher.runtimeconfig.json", "HidSharp.dll", "kvm-switcher_0.8.1-1_all.deb", "LICENSE", "THIRD-PARTY-NOTICES.txt")
     $archive = [System.IO.Compression.ZipFile]::OpenRead($Path)
     try {
         $entries = @($archive.Entries)
@@ -97,7 +97,7 @@ function Assert-ExactZip {
 function Assert-ExactOnlineBundle {
     param([string]$Path)
     Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $expected = @("kvm-switcher_0.8.0-1_all.deb", "config.json", "install.sh", "README.md", "LICENSE", "SHA256SUMS")
+    $expected = @("kvm-switcher_0.8.1-1_all.deb", "config.json", "install.sh", "README.md", "LICENSE", "SHA256SUMS")
     $archive = [System.IO.Compression.ZipFile]::OpenRead($Path)
     try {
         $entries = @($archive.Entries)
@@ -214,7 +214,7 @@ function Assert-NoShortcut {
 
 function Assert-InstalledPayload {
     param([string]$InstallDirectory, [string]$PayloadDirectory)
-    $names = @("KvmSwitcher.exe", "KvmSwitcher.dll", "KvmSwitcher.deps.json", "KvmSwitcher.runtimeconfig.json", "HidSharp.dll", "kvm-switcher_0.8.0-1_all.deb", "LICENSE", "THIRD-PARTY-NOTICES.txt")
+    $names = @("KvmSwitcher.exe", "KvmSwitcher.dll", "KvmSwitcher.deps.json", "KvmSwitcher.runtimeconfig.json", "HidSharp.dll", "kvm-switcher_0.8.1-1_all.deb", "LICENSE", "THIRD-PARTY-NOTICES.txt")
     foreach ($name in $names) {
         $installed = Join-Path $InstallDirectory $name
         $expected = Join-Path $PayloadDirectory $name

@@ -1,6 +1,6 @@
 # Release gates
 
-KVM Switcher is not published automatically. Release `v0.8.0` is prepared for
+KVM Switcher is not published automatically. Release `v0.8.1` is prepared for
 the public repository `https://github.com/nexxyz/kvm-switcher` only after all
 gates pass.
 
@@ -20,7 +20,7 @@ gates pass.
    config.
    `artifacts/SHA256SUMS.txt` must contain exactly four lowercase entries for
    those four names. `artifacts/SHA256SUMS-debian.txt` must contain exactly one
-   lowercase entry for `kvm-switcher_0.8.0-1_all.deb`.
+   lowercase entry for `kvm-switcher_0.8.1-1_all.deb`.
 2. **Passive live-hardware FAT**: when the User and monitor are present, run
    `scripts/Run-LiveHardwareFat.ps1 -MonitorAwake`. It verifies all four
    release asset hashes and exact bundle contents, then runs the installed-free
@@ -40,14 +40,14 @@ gates pass.
 No automated script alone is full FAT. The full installed-product gate is
 reserved for all three automated gates plus the attended manual checklist.
 
-The Debian package is `kvm-switcher_0.8.0-1_all.deb`. Its release assets use
+The Debian package is `kvm-switcher_0.8.1-1_all.deb`. Its release assets use
 the immutable URLs below:
 
 ```text
-https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.0/install-kvm-switcher.sh
-https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.0/kvm-switcher_0.8.0-1_all.deb
-https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.0/SHA256SUMS-debian.txt
-https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.0/kvm-switcher-debian.zip
+https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.1/install-kvm-switcher.sh
+https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.1/kvm-switcher_0.8.1-1_all.deb
+https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.1/SHA256SUMS-debian.txt
+https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.1/kvm-switcher-debian.zip
 ```
 
 The latest bootstrap convenience URL is:
@@ -70,14 +70,14 @@ The release has not been published by this repository workflow.
 
 ```sh
 gh auth status
-gh release create v0.8.0 --repo nexxyz/kvm-switcher \
-  --title "KVM Switcher v0.8.0" \
+gh release create v0.8.1 --repo nexxyz/kvm-switcher \
+  --title "KVM Switcher v0.8.1" \
   --notes "See the repository release notes and compatibility guidance." \
   artifacts/KvmSwitcher-Setup.exe \
   artifacts/KvmSwitcher-win-x64.zip \
   artifacts/install-kvm-switcher.sh \
   artifacts/kvm-switcher-debian.zip \
-  artifacts/kvm-switcher_0.8.0-1_all.deb \
+  artifacts/kvm-switcher_0.8.1-1_all.deb \
   artifacts/SHA256SUMS.txt \
   artifacts/SHA256SUMS-debian.txt
 ```
@@ -86,12 +86,12 @@ If the tag already has a release and only the frozen assets need uploading,
 use:
 
 ```sh
-gh release upload v0.8.0 --repo nexxyz/kvm-switcher --clobber \
+gh release upload v0.8.1 --repo nexxyz/kvm-switcher --clobber \
   artifacts/KvmSwitcher-Setup.exe \
   artifacts/KvmSwitcher-win-x64.zip \
   artifacts/install-kvm-switcher.sh \
   artifacts/kvm-switcher-debian.zip \
-  artifacts/kvm-switcher_0.8.0-1_all.deb \
+  artifacts/kvm-switcher_0.8.1-1_all.deb \
   artifacts/SHA256SUMS.txt \
   artifacts/SHA256SUMS-debian.txt
 ```
@@ -109,7 +109,7 @@ for asset in install-kvm-switcher.sh kvm-switcher-debian.zip; do
     "https://github.com/nexxyz/kvm-switcher/releases/latest/download/$asset"
 done
 wget --spider --https-only --timeout=30 --tries=1 \
-  https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.0/kvm-switcher_0.8.0-1_all.deb
+  https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.1/kvm-switcher_0.8.1-1_all.deb
 ```
 
 Also compare the published package with `SHA256SUMS-debian.txt`; never mix a

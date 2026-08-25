@@ -109,19 +109,19 @@ one-line command for the current online release:
 sh -c 'f=$(mktemp) || exit 1; trap "rm -f \"$f\"" 0; if ! wget --https-only -T 30 -t 1 -O "$f" "https://github.com/nexxyz/kvm-switcher/releases/latest/download/install-kvm-switcher.sh" || [ ! -s "$f" ]; then printf "%s\n" "Download failed or empty; download the Debian bundle instead: https://github.com/nexxyz/kvm-switcher/releases/latest/download/kvm-switcher-debian.zip" >&2; exit 1; fi; sh "$f"'
 ```
 
-The bootstrap is intended for a normal, non-root account. For release `v0.8.0`
+The bootstrap is intended for a normal, non-root account. For release `v0.8.1`
 it downloads the immutable package
-`https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.0/kvm-switcher_0.8.0-1_all.deb`,
+`https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.1/kvm-switcher_0.8.1-1_all.deb`,
 checks its embedded SHA256, and only then uses `sudo apt-get` with the existing
 configuration preserved. The matching one-entry checksum file is
-`https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.0/SHA256SUMS-debian.txt`;
+`https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.1/SHA256SUMS-debian.txt`;
 do not mix assets from different release tags.
 
 If GitHub or the package download is unavailable, use the matching
 `kvm-switcher-debian.zip` release asset instead:
 
 ```text
-https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.0/kvm-switcher-debian.zip
+https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.1/kvm-switcher-debian.zip
 ```
 
 Extract it and run `sh ./install.sh`. The bundle avoids GitHub during its

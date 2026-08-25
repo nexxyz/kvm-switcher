@@ -23,10 +23,10 @@ mkdir -p "$FAKE_BIN" "$BUNDLE" "$SYSTEM_ROOT"
 : > "$LOG"
 
 cp "$SOURCE_INSTALL" "$BUNDLE/install.sh"
-printf '%s\n' "private package bytes" > "$BUNDLE/kvm-switcher_0.8.0-1_all.deb"
+printf '%s\n' "private package bytes" > "$BUNDLE/kvm-switcher_0.8.1-1_all.deb"
 cp "$REPO_ROOT/linux/config.example.json" "$BUNDLE/config.json"
 cp "$REPO_ROOT/packaging/debian/config.json" "$PACKAGE_CONFIG"
-(CDPATH= cd -- "$BUNDLE" && sha256sum kvm-switcher_0.8.0-1_all.deb config.json > SHA256SUMS)
+(CDPATH= cd -- "$BUNDLE" && sha256sum kvm-switcher_0.8.1-1_all.deb config.json > SHA256SUMS)
 
 cat > "$FAKE_BIN/sudo" <<'EOF'
 #!/bin/sh
@@ -98,7 +98,7 @@ run_failure() {
 }
 
 assert_apt_and_account() {
-    grep -F "sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=--force-confold install $BUNDLE/kvm-switcher_0.8.0-1_all.deb" "$LOG" >/dev/null || fail "apt did not receive the exact noninteractive confold command"
+    grep -F "sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=--force-confold install $BUNDLE/kvm-switcher_0.8.1-1_all.deb" "$LOG" >/dev/null || fail "apt did not receive the exact noninteractive confold command"
     [ "$(grep -c '^sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=--force-confold install ' "$LOG")" -eq 1 ] || fail "apt was retried or flags changed"
     grep -F "sudo adduser fatuser kvmswitch" "$LOG" >/dev/null || fail "adduser did not receive id -un account"
     ! grep -F "udevadm" "$LOG" >/dev/null || fail "helper invoked udevadm"
@@ -140,12 +140,12 @@ grep -F "install -o root -g root -m 0644" "$LOG" >/dev/null || fail "--apply-con
 
 reset_case
 (CDPATH= cd -- "$BUNDLE" && {
-    printf '%s\n' "0000000000000000000000000000000000000000000000000000000000000000  kvm-switcher_0.8.0-1_all.deb"
+    printf '%s\n' "0000000000000000000000000000000000000000000000000000000000000000  kvm-switcher_0.8.1-1_all.deb"
     sha256sum config.json
 }) > "$BUNDLE/SHA256SUMS"
 run_failure
 [ ! -s "$LOG" ] || fail "checksum failure invoked sudo"
-(CDPATH= cd -- "$BUNDLE" && sha256sum kvm-switcher_0.8.0-1_all.deb config.json > SHA256SUMS)
+(CDPATH= cd -- "$BUNDLE" && sha256sum kvm-switcher_0.8.1-1_all.deb config.json > SHA256SUMS)
 
 reset_case
 export FAKE_APT_FAIL=1
