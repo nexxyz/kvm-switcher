@@ -40,7 +40,7 @@ Source: "..\artifacts\staging\windows\KvmSwitcher.dll"; DestDir: "{app}"; Flags:
 Source: "..\artifacts\staging\windows\KvmSwitcher.deps.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\artifacts\staging\windows\KvmSwitcher.runtimeconfig.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\artifacts\staging\windows\HidSharp.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\artifacts\staging\windows\kvm-switcher_0.8.1-1_all.deb"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\artifacts\staging\windows\kvm-switcher_0.8.2-1_all.deb"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\artifacts\staging\windows\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\artifacts\staging\windows\THIRD-PARTY-NOTICES.txt"; DestDir: "{app}"; Flags: ignoreversion
 

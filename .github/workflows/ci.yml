@@ -25,17 +25,17 @@ jobs:
       - name: Verify and stage Debian payload input
         shell: pwsh
         run: |
-          $deb = 'artifacts/input/portable/kvm-switcher_0.8.1-1_all.deb'
+          $deb = 'artifacts/input/portable/kvm-switcher_0.8.2-1_all.deb'
           $sums = 'artifacts/input/portable/SHA256SUMS-debian.txt'
           $onlineInstaller = 'artifacts/input/portable/install-kvm-switcher.sh'
           $debianBundle = 'artifacts/input/portable/kvm-switcher-debian.zip'
           if (-not (Test-Path $deb) -or -not (Test-Path $sums) -or -not (Test-Path $onlineInstaller) -or -not (Test-Path $debianBundle)) { throw 'Missing Debian release asset input' }
           $lines = @(Get-Content $sums | Where-Object { $_.Trim().Length -ne 0 })
-          if ($lines.Count -ne 1 -or $lines[0] -notmatch '^[0-9a-f]{64}\s+kvm-switcher_0\.8\.1-1_all\.deb$') { throw 'Invalid Debian payload checksum manifest' }
+          if ($lines.Count -ne 1 -or $lines[0] -notmatch '^[0-9a-f]{64}\s+kvm-switcher_0\.8\.2-1_all\.deb$') { throw 'Invalid Debian payload checksum manifest' }
           $actual = (Get-FileHash $deb -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($actual -ne (($lines[0] -split '\s+')[0])) { throw 'Debian payload checksum mismatch' }
           New-Item -ItemType Directory -Path artifacts -Force | Out-Null
-          Copy-Item $deb artifacts/kvm-switcher_0.8.1-1_all.deb -Force
+          Copy-Item $deb artifacts/kvm-switcher_0.8.2-1_all.deb -Force
           Copy-Item $sums artifacts/SHA256SUMS-debian.txt -Force
           Copy-Item $onlineInstaller artifacts/install-kvm-switcher.sh -Force
           Copy-Item $debianBundle artifacts/kvm-switcher-debian.zip -Force
@@ -69,10 +69,10 @@ jobs:
       - name: Validate publish staging
         shell: pwsh
         run: |
-          Copy-Item artifacts/kvm-switcher_0.8.1-1_all.deb artifacts/staging/windows/kvm-switcher_0.8.1-1_all.deb -Force
+          Copy-Item artifacts/kvm-switcher_0.8.2-1_all.deb artifacts/staging/windows/kvm-switcher_0.8.2-1_all.deb -Force
           Copy-Item LICENSE artifacts/staging/windows/LICENSE -Force
           Copy-Item THIRD-PARTY-NOTICES.txt artifacts/staging/windows/THIRD-PARTY-NOTICES.txt -Force
-          $required = @('KvmSwitcher.exe','KvmSwitcher.dll','KvmSwitcher.deps.json','KvmSwitcher.runtimeconfig.json','HidSharp.dll','kvm-switcher_0.8.1-1_all.deb','LICENSE','THIRD-PARTY-NOTICES.txt')
+          $required = @('KvmSwitcher.exe','KvmSwitcher.dll','KvmSwitcher.deps.json','KvmSwitcher.runtimeconfig.json','HidSharp.dll','kvm-switcher_0.8.2-1_all.deb','LICENSE','THIRD-PARTY-NOTICES.txt')
           foreach ($name in $required) { if (-not (Test-Path "artifacts/staging/windows/$name")) { throw "Missing publish file: $name" } }
           Remove-Item artifacts/staging/windows/*.pdb -Force -ErrorAction SilentlyContinue
           foreach ($file in @(Get-ChildItem artifacts/staging/windows -File)) { if ($required -notcontains $file.Name) { throw "Unexpected publish file: $($file.Name)" } }
@@ -118,7 +118,7 @@ jobs:
             artifacts/SHA256SUMS.txt
             artifacts/install-kvm-switcher.sh
             artifacts/kvm-switcher-debian.zip
-            artifacts/kvm-switcher_0.8.1-1_all.deb
+            artifacts/kvm-switcher_0.8.2-1_all.deb
             artifacts/SHA256SUMS-debian.txt
           if-no-files-found: error
 
@@ -166,10 +166,10 @@ jobs:
           sh -n scripts/Build-DebianPackage.sh scripts/Test-DebianBundleInstall.sh scripts/Test-DebianPackageLifecycle.sh scripts/install-kvm-switcher.sh.in scripts/Build-OnlineInstaller.sh scripts/Test-OnlineInstaller.sh linux/debian-bundle/install.sh
           sh scripts/Test-DebianBundleInstall.sh
           SOURCE_DATE_EPOCH=0 sh scripts/Build-DebianPackage.sh
-          timeout 120s sh scripts/Test-DebianPackageLifecycle.sh artifacts/kvm-switcher_0.8.1-1_all.deb
-          dpkg-deb --info artifacts/kvm-switcher_0.8.1-1_all.deb
-          dpkg-deb --contents artifacts/kvm-switcher_0.8.1-1_all.deb
-          test -s artifacts/kvm-switcher_0.8.1-1_all.deb
+          timeout 120s sh scripts/Test-DebianPackageLifecycle.sh artifacts/kvm-switcher_0.8.2-1_all.deb
+          dpkg-deb --info artifacts/kvm-switcher_0.8.2-1_all.deb
+          dpkg-deb --contents artifacts/kvm-switcher_0.8.2-1_all.deb
+          test -s artifacts/kvm-switcher_0.8.2-1_all.deb
           test "$(wc -l < artifacts/SHA256SUMS-debian.txt)" -eq 1
           (cd artifacts && sha256sum -c SHA256SUMS-debian.txt)
           sh scripts/Build-OnlineInstaller.sh
@@ -196,7 +196,7 @@ jobs:
           path: |
             artifacts/KvmSwitcher-portable.zip
             artifacts/SHA256SUMS-portable.txt
-            artifacts/kvm-switcher_0.8.1-1_all.deb
+            artifacts/kvm-switcher_0.8.2-1_all.deb
             artifacts/SHA256SUMS-debian.txt
             artifacts/install-kvm-switcher.sh
             artifacts/kvm-switcher-debian.zip

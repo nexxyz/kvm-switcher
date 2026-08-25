@@ -141,7 +141,7 @@ try {
 
     $csprojMatches = [regex]::Matches(
         $originalTexts[$csprojRelativePath],
-        '(?m)^[ \t]*<Version>(?<value>[^<\r\n]+)</Version>[ \t]*$')
+        '(?m)^[ \t]*<Version>(?<value>[^<\r\n]+)</Version>[ \t]*\r?$')
     if ($csprojMatches.Count -ne 1) {
         Stop-VersionUpdate "expected exactly one active <Version> in KvmSwitcher.csproj"
     }
@@ -150,7 +150,7 @@ try {
 
     $pyprojectMatches = [regex]::Matches(
         $originalTexts[$pyprojectRelativePath],
-        '(?m)^[ \t]*version = "(?<value>[^"\r\n]+)"[ \t]*$')
+        '(?m)^[ \t]*version = "(?<value>[^"\r\n]+)"[ \t]*\r?$')
     if ($pyprojectMatches.Count -ne 1) {
         Stop-VersionUpdate "expected exactly one active version in linux/pyproject.toml"
     }
@@ -183,7 +183,7 @@ try {
         Stop-VersionUpdate "missing Debian control file"
     }
     $controlText = Read-TextFile -Path $controlPath
-    $controlMatches = [regex]::Matches($controlText, '(?m)^Package: kvm-switcher$')
+    $controlMatches = [regex]::Matches($controlText, '(?m)^Package: kvm-switcher\r?$')
     if ($controlMatches.Count -ne 1) {
         Stop-VersionUpdate "Debian control file must use package name kvm-switcher"
     }
@@ -348,15 +348,15 @@ try {
     }
 
     $finalCsproj = $candidateTexts[$csprojRelativePath]
-    $finalVersionMatches = [regex]::Matches($finalCsproj, '(?m)^[ \t]*<Version>(?<value>[^<\r\n]+)</Version>[ \t]*$')
-    $finalFileVersionMatches = [regex]::Matches($finalCsproj, '(?m)^[ \t]*<FileVersion>(?<value>[^<\r\n]+)</FileVersion>[ \t]*$')
-    $finalAssemblyVersionMatches = [regex]::Matches($finalCsproj, '(?m)^[ \t]*<AssemblyVersion>(?<value>[^<\r\n]+)</AssemblyVersion>[ \t]*$')
+    $finalVersionMatches = [regex]::Matches($finalCsproj, '(?m)^[ \t]*<Version>(?<value>[^<\r\n]+)</Version>[ \t]*\r?$')
+    $finalFileVersionMatches = [regex]::Matches($finalCsproj, '(?m)^[ \t]*<FileVersion>(?<value>[^<\r\n]+)</FileVersion>[ \t]*\r?$')
+    $finalAssemblyVersionMatches = [regex]::Matches($finalCsproj, '(?m)^[ \t]*<AssemblyVersion>(?<value>[^<\r\n]+)</AssemblyVersion>[ \t]*\r?$')
     if ($finalVersionMatches.Count -ne 1 -or $finalVersionMatches[0].Groups["value"].Value -cne $Version -or
         $finalFileVersionMatches.Count -ne 1 -or $finalFileVersionMatches[0].Groups["value"].Value -cne "$Version.0" -or
         $finalAssemblyVersionMatches.Count -ne 1 -or $finalAssemblyVersionMatches[0].Groups["value"].Value -cne "$Version.0") {
         Stop-VersionUpdate "final Windows version fields are inconsistent"
     }
-    $finalPyprojectMatches = [regex]::Matches($candidateTexts[$pyprojectRelativePath], '(?m)^[ \t]*version = "(?<value>[^"\r\n]+)"[ \t]*$')
+    $finalPyprojectMatches = [regex]::Matches($candidateTexts[$pyprojectRelativePath], '(?m)^[ \t]*version = "(?<value>[^"\r\n]+)"[ \t]*\r?$')
     if ($finalPyprojectMatches.Count -ne 1 -or $finalPyprojectMatches[0].Groups["value"].Value -cne $Version) {
         Stop-VersionUpdate "final Linux version is inconsistent"
     }
@@ -381,10 +381,10 @@ try {
     $postCsproj = Read-TextFile -Path (Join-Path $RepositoryRoot $csprojRelativePath)
     $postPyproject = Read-TextFile -Path (Join-Path $RepositoryRoot $pyprojectRelativePath)
     $postChangelog = Read-TextFile -Path $changelogPath
-    $postCsprojVersion = [regex]::Matches($postCsproj, '(?m)^[ \t]*<Version>(?<value>[^<\r\n]+)</Version>[ \t]*$')
-    $postCsprojFileVersion = [regex]::Matches($postCsproj, '(?m)^[ \t]*<FileVersion>(?<value>[^<\r\n]+)</FileVersion>[ \t]*$')
-    $postCsprojAssemblyVersion = [regex]::Matches($postCsproj, '(?m)^[ \t]*<AssemblyVersion>(?<value>[^<\r\n]+)</AssemblyVersion>[ \t]*$')
-    $postPyprojectVersion = [regex]::Matches($postPyproject, '(?m)^[ \t]*version = "(?<value>[^"\r\n]+)"[ \t]*$')
+    $postCsprojVersion = [regex]::Matches($postCsproj, '(?m)^[ \t]*<Version>(?<value>[^<\r\n]+)</Version>[ \t]*\r?$')
+    $postCsprojFileVersion = [regex]::Matches($postCsproj, '(?m)^[ \t]*<FileVersion>(?<value>[^<\r\n]+)</FileVersion>[ \t]*\r?$')
+    $postCsprojAssemblyVersion = [regex]::Matches($postCsproj, '(?m)^[ \t]*<AssemblyVersion>(?<value>[^<\r\n]+)</AssemblyVersion>[ \t]*\r?$')
+    $postPyprojectVersion = [regex]::Matches($postPyproject, '(?m)^[ \t]*version = "(?<value>[^"\r\n]+)"[ \t]*\r?$')
     if ($postCsprojVersion.Count -ne 1 -or $postCsprojVersion[0].Groups["value"].Value -cne $Version -or
         $postCsprojFileVersion.Count -ne 1 -or $postCsprojFileVersion[0].Groups["value"].Value -cne "$Version.0" -or
         $postCsprojAssemblyVersion.Count -ne 1 -or $postCsprojAssemblyVersion[0].Groups["value"].Value -cne "$Version.0" -or

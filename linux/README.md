@@ -21,7 +21,7 @@ On Debian or Raspberry Pi OS, install the locally built package without pip or
 a bundled wheel:
 
 ```sh
-sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=--force-confold install ./kvm-switcher_0.8.1-1_all.deb
+sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=--force-confold install ./kvm-switcher_0.8.2-1_all.deb
 sudo adduser "$USER" kvmswitch
 ```
 
@@ -43,6 +43,15 @@ Legacy configs without a default remain valid for named profiles; add exactly
 one explicit `"default": true` before using bare `kvm-switch`. Bare mode changes
 the route and is not a probe.
 
+To check a configuration before handing it to an installer, run:
+
+```sh
+kvm-switch --validate-config PATH
+```
+
+This is validation only: it does not write the file, enumerate or open HID
+devices, or perform report I/O.
+
 After the USB path has settled, run the delayed no-write diagnostic when needed:
 
 ```sh
@@ -54,8 +63,15 @@ performs no report I/O.
 
 The Debian package default under `/etc` is intentionally frozen. Portable and
 exported example configs may evolve independently, but an existing system
-config always wins during helper upgrades. The helper does not apply the
-exported config implicitly; use `sh ./install.sh --apply-config` deliberately.
+config always wins during no-config helper upgrades; the helper uses
+`--force-confold` and does not apply an exported config implicitly. Use
+`sh ./install.sh --apply-config` deliberately for a bundle's config.
+
+The generated tray bootstrap is different in config mode: it validates the
+handed config with `kvm-switch --validate-config` without HID I/O, then
+atomically replaces `/etc/kvm-switcher/config.json`. This is a deliberate
+replacement and does not preserve the old system config. No-argument bootstrap
+and helper runs retain the default-preserving behavior.
 After an install or upgrade, reboot
 or use the attended `sudo udevadm control --reload-rules` command, then unplug
 and replug the monitor USB path. A one-time upgrade from an older package that

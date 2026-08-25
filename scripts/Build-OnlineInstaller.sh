@@ -6,7 +6,7 @@ export LC_ALL=C
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd -P)
 ARTIFACT_ROOT="$REPO_ROOT/artifacts"
-DEB_NAME='kvm-switcher_0.8.1-1_all.deb'
+DEB_NAME='kvm-switcher_0.8.2-1_all.deb'
 DEB_PATH="$ARTIFACT_ROOT/$DEB_NAME"
 DEBIAN_SUMS="$ARTIFACT_ROOT/SHA256SUMS-debian.txt"
 CONFIG_SOURCE="$REPO_ROOT/packaging/debian/config.json"
@@ -17,7 +17,7 @@ TEMPLATE="$SCRIPT_DIR/install-kvm-switcher.sh.in"
 BOOTSTRAP_OUTPUT="$ARTIFACT_ROOT/install-kvm-switcher.sh"
 BUNDLE_OUTPUT="$ARTIFACT_ROOT/kvm-switcher-debian.zip"
 FROZEN_CONFIG_SHA256='10a6c1a52b1a823bcf8b932ccf5f90de4cecf40eb6e18314ef6a91e541d14fdb'
-RELEASE_TAG='v0.8.1'
+RELEASE_TAG='v0.8.2'
 REPOSITORY='nexxyz/kvm-switcher'
 
 fail() {

@@ -7,7 +7,7 @@ namespace KvmSwitcher;
 
 internal static class DebianBundleExporter
 {
-    internal const string PackageFileName = "kvm-switcher_0.8.1-1_all.deb";
+    internal const string PackageFileName = "kvm-switcher_0.8.2-1_all.deb";
     private const string InstallAsset = "KvmSwitcher.DebianBundle.install.sh";
     private const string ReadmeAsset = "KvmSwitcher.DebianBundle.README.md";
 

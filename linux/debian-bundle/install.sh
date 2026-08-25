@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-DEB_NAME=kvm-switcher_0.8.1-1_all.deb
+DEB_NAME=kvm-switcher_0.8.2-1_all.deb
 CONFIG_NAME=config.json
 MANIFEST_NAME=SHA256SUMS
 
