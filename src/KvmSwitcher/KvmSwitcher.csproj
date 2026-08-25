@@ -1,0 +1,57 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <RootNamespace>KvmSwitcher</RootNamespace>
+    <AssemblyName>KvmSwitcher</AssemblyName>
+    <Version>0.8.0</Version>
+    <FileVersion>0.8.0.0</FileVersion>
+    <AssemblyVersion>0.8.0.0</AssemblyVersion>
+    <Title>KVM Switcher</Title>
+    <Product>KVM Switcher</Product>
+    <Company>KVM Switcher</Company>
+    <ApplicationIcon>..\..\assets\KvmSwitcher.ico</ApplicationIcon>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="HidSharp" Version="2.6.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="../../linux/kvmSwitcher.py" Link="kvmSwitcher.py">
+      <LogicalName>KvmSwitcher.Linux.kvmSwitcher.py</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../linux/pyproject.toml" Link="pyproject.toml">
+      <LogicalName>KvmSwitcher.Linux.pyproject.toml</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../linux/requirements.txt" Link="requirements.txt">
+      <LogicalName>KvmSwitcher.Linux.requirements.txt</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../linux/install.sh" Link="install.sh">
+      <LogicalName>KvmSwitcher.Linux.install.sh</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../linux/README.md" Link="README.md">
+      <LogicalName>KvmSwitcher.Linux.README.md</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../linux/udev/99-kvm-switcher.rules" Link="udev/99-kvm-switcher.rules">
+      <LogicalName>KvmSwitcher.Linux.udev.99-kvm-switcher.rules</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../LICENSE" Link="LICENSE">
+      <LogicalName>KvmSwitcher.License</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../linux/debian-bundle/install.sh" Link="debian-bundle/install.sh">
+      <LogicalName>KvmSwitcher.DebianBundle.install.sh</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../linux/debian-bundle/README.md" Link="debian-bundle/README.md">
+      <LogicalName>KvmSwitcher.DebianBundle.README.md</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../assets/KvmSwitcher.ico">
+      <LogicalName>KvmSwitcher.Icon.ico</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+</Project>

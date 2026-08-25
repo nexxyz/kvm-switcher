@@ -1,0 +1,59 @@
+#!/bin/sh
+set -eu
+
+PACKAGE_NAME='kvm-switcher_0.8.0-1_all.deb'
+PACKAGE_URL='@PACKAGE_URL@'
+BUNDLE_URL='@BUNDLE_URL@'
+EXPECTED_SHA256='@DEB_SHA256@'
+
+fail() {
+    printf '%s\n' "error: $*" >&2
+    exit 1
+}
+
+recommend_bundle() {
+    printf '%s\n' 'The online package could not be downloaded or verified.' >&2
+    printf '%s\n' "Use the immutable Debian bundle: $BUNDLE_URL" >&2
+    printf '%s\n' 'Extract the bundle and run: sh ./install.sh' >&2
+    exit 1
+}
+
+[ "$#" -eq 0 ] || fail 'this installer does not accept arguments'
+
+for command_name in wget mktemp sha256sum sudo env apt-get id adduser; do
+    command -v "$command_name" >/dev/null 2>&1 || fail "required command is missing: $command_name"
+done
+
+[ "$(id -u)" -ne 0 ] || fail 'run as a normal user, not root'
+account=$(id -un)
+[ -n "$account" ] || fail 'could not determine the invoking account'
+
+tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/kvm-switcher-installer.XXXXXX")
+trap 'rm -rf "$tmp_dir"' 0 1 2 3 15
+package_path="$tmp_dir/$PACKAGE_NAME"
+
+if ! wget --https-only --timeout=30 --tries=1 --no-verbose \
+    --output-document="$package_path" "$PACKAGE_URL"; then
+    recommend_bundle
+fi
+
+[ -s "$package_path" ] || recommend_bundle
+
+if ! checksum_line=$(sha256sum "$package_path"); then
+    recommend_bundle
+fi
+actual_sha256=${checksum_line%% *}
+[ "$actual_sha256" = "$EXPECTED_SHA256" ] || recommend_bundle
+
+if ! sudo env DEBIAN_FRONTEND=noninteractive apt-get -y \
+    -o Dpkg::Options::=--force-confold install "$package_path"; then
+    fail 'package installation failed; the invoking account was not added to kvmswitch'
+fi
+
+if ! sudo adduser "$account" kvmswitch; then
+    fail 'package installed, but adding the invoking account to kvmswitch failed'
+fi
+
+printf '%s\n' 'KVM Switcher installed successfully.'
+printf '%s\n' "Account '$account' was added to the kvmswitch group. Log in again for the group change to take effect."
+printf '%s\n' 'After the group change, unplug and replug the monitor USB path.'

@@ -1,0 +1,18 @@
+{
+  "targets": [
+    {
+      "name": "Raspberry",
+      "input": "hdmi1",
+      "kvm": "typec",
+      "hotkey": "Ctrl+Shift+Alt+P",
+      "default": false
+    },
+    {
+      "name": "Windows",
+      "input": "dp",
+      "kvm": "upstream",
+      "hotkey": "Ctrl+Shift+Alt+W",
+      "default": true
+    }
+  ]
+}
