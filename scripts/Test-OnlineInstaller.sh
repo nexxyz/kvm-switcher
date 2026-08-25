@@ -5,13 +5,14 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd -P)
 BUILD_SCRIPT="$SCRIPT_DIR/Build-OnlineInstaller.sh"
 TEMPLATE="$SCRIPT_DIR/install-kvm-switcher.sh.in"
-DEB_NAME='kvm-switcher_0.8.1-1_all.deb'
+DEB_NAME='kvm-switcher_0.8.2-1_all.deb'
 DEB_PATH="$REPO_ROOT/artifacts/$DEB_NAME"
 BOOTSTRAP="$REPO_ROOT/artifacts/install-kvm-switcher.sh"
 BUNDLE="$REPO_ROOT/artifacts/kvm-switcher-debian.zip"
 CONFIG_SOURCE="$REPO_ROOT/packaging/debian/config.json"
 REAL_MKTEMP=$(command -v mktemp)
 REAL_SHA256SUM=$(command -v sha256sum)
+REAL_MV=$(command -v mv)
 
 fail() {
     printf '%s\n' "FAIL: $*" >&2
@@ -34,14 +35,16 @@ not_contains() {
 
 assert_no_log_entry() {
     command_name=$1
-    if grep -F "$command_name " "$FAKE_LOG" >/dev/null 2>&1; then
+    if grep -E "^$command_name " "$FAKE_LOG" >/dev/null 2>&1; then
         fail "unexpected fake command invocation: $command_name"
     fi
 }
 
 assert_temp_cleanup() {
-    temp_path=$(tr -d '\n' < "$TEMP_PATH_LOG")
-    [ -z "$temp_path" ] || [ ! -e "$temp_path" ] || fail "installer temporary directory was not removed: $temp_path"
+    while IFS= read -r temp_path || [ -n "$temp_path" ]; do
+        [ -n "$temp_path" ] || continue
+        [ ! -e "$temp_path" ] || fail "installer temporary path was not removed: $temp_path"
+    done < "$TEMP_PATH_LOG"
 }
 
 count_log_entries() {
@@ -55,11 +58,24 @@ trap 'rm -rf "$TMP_ROOT"' 0 1 2 3 15
 FAKE_BIN="$TMP_ROOT/bin"
 FAKE_LOG="$TMP_ROOT/fake.log"
 TEMP_PATH_LOG="$TMP_ROOT/temp-paths.log"
+FAKE_CONFIG_DIR="$TMP_ROOT/etc/kvm-switcher"
+FAKE_CONFIG_TARGET="$FAKE_CONFIG_DIR/config.json"
+CONFIG_FILE="$TMP_ROOT/input-config.json"
+MALFORMED_CONFIG="$TMP_ROOT/malformed-config.json"
+EMPTY_CONFIG="$TMP_ROOT/empty-config.json"
+NONREGULAR_CONFIG="$TMP_ROOT/config-directory"
+SENTINEL_FILE="$TMP_ROOT/sentinel-config.json"
 mkdir -p "$FAKE_BIN"
+mkdir -p "$FAKE_CONFIG_DIR"
+printf '%s\n' '{"targets":[{"name":"Candidate","input":"hdmi1","kvm":"typec"}]}' > "$CONFIG_FILE"
+printf '%s\n' '{"targets":' > "$MALFORMED_CONFIG"
+: > "$EMPTY_CONFIG"
+mkdir -p "$NONREGULAR_CONFIG"
 : > "$FAKE_LOG"
 : > "$TEMP_PATH_LOG"
-export FAKE_BIN FAKE_LOG TEMP_PATH_LOG TMP_ROOT
-export REAL_MKTEMP REAL_SHA256SUM
+export FAKE_BIN FAKE_LOG TEMP_PATH_LOG TMP_ROOT FAKE_CONFIG_DIR FAKE_CONFIG_TARGET
+export CONFIG_FILE MALFORMED_CONFIG EMPTY_CONFIG NONREGULAR_CONFIG SENTINEL_FILE
+export REAL_MKTEMP REAL_SHA256SUM REAL_MV
 PATH="$FAKE_BIN:$PATH"
 export PATH
 
@@ -72,7 +88,9 @@ case "$FAKE_MODE" in
     download-failure) exit 8 ;;
     empty) : > "$output_path" ;;
     hash-mismatch) printf '%s\n' 'not the Debian package' > "$output_path" ;;
-    success|apt-failure|apt-installs-adduser) cp "$TEST_PACKAGE" "$output_path" ;;
+    success|apt-failure|apt-installs-adduser|config-success|validator-failure|atomic-failure|apt-failure-config) cp "$TEST_PACKAGE" "$output_path" ;;
+    config-download-failure) exit 8 ;;
+    config-hash-mismatch) printf '%s\n' 'not the Debian package' > "$output_path" ;;
     *) exit 9 ;;
 esac
 EOF
@@ -80,7 +98,14 @@ EOF
 cat > "$FAKE_BIN/mktemp" <<'EOF'
 #!/bin/sh
 printf 'mktemp %s\n' "$*" >> "$FAKE_LOG"
-path=$("$REAL_MKTEMP" "$@") || exit 1
+case "$1" in
+    /etc/kvm-switcher/*)
+        path=$("$REAL_MKTEMP" "$FAKE_CONFIG_DIR/${1##*/}") || exit 1
+        ;;
+    *)
+        path=$("$REAL_MKTEMP" "$@") || exit 1
+        ;;
+esac
 printf '%s\n' "$path" >> "$TEMP_PATH_LOG"
 printf '%s\n' "$path"
 EOF
@@ -107,6 +132,12 @@ printf 'sudo %s\n' "$*" >> "$FAKE_LOG"
 "$@"
 EOF
 
+cat > "$FAKE_BIN/kvm-switch" <<'EOF'
+#!/bin/sh
+printf 'kvm-switch %s\n' "$*" >> "$FAKE_LOG"
+[ "$FAKE_VALIDATOR_MODE" != validator-failure ] || exit 17
+EOF
+
 cat > "$FAKE_BIN/env" <<'EOF'
 #!/bin/sh
 printf 'env %s\n' "$*" >> "$FAKE_LOG"
@@ -118,7 +149,9 @@ EOF
 cat > "$FAKE_BIN/apt-get" <<'EOF'
 #!/bin/sh
 printf 'apt-get %s\n' "$*" >> "$FAKE_LOG"
-[ "$FAKE_MODE" != apt-failure ] || exit 12
+if [ "$FAKE_MODE" = apt-failure ] || [ "$FAKE_MODE" = apt-failure-config ]; then
+    exit 12
+fi
 if [ "$FAKE_MODE" = apt-installs-adduser ]; then
     cat > "$FAKE_BIN/adduser" <<'ADDUSER'
 #!/bin/sh
@@ -126,6 +159,23 @@ printf 'adduser %s\n' "$*" >> "$FAKE_LOG"
 ADDUSER
     chmod 0755 "$FAKE_BIN/adduser"
 fi
+EOF
+
+cat > "$FAKE_BIN/install" <<'EOF'
+#!/bin/sh
+printf 'install %s\n' "$*" >> "$FAKE_LOG"
+[ "$FAKE_MODE" != atomic-failure ] || exit 19
+cp "$7" "$8"
+chmod 0644 "$8"
+EOF
+
+cat > "$FAKE_BIN/mv" <<'EOF'
+#!/bin/sh
+printf 'mv %s\n' "$*" >> "$FAKE_LOG"
+if [ "$1" = -f ] && [ "$3" = /etc/kvm-switcher/config.json ]; then
+    exec "$REAL_MV" -f "$2" "$FAKE_CONFIG_TARGET"
+fi
+exec "$REAL_MV" "$@"
 EOF
 
 cat > "$FAKE_BIN/adduser" <<'EOF'
@@ -136,24 +186,29 @@ EOF
 chmod 0755 "$FAKE_BIN"/*
 
 [ -s "$DEB_PATH" ] || fail 'the Debian artifact prerequisite is missing'
-sh -n "$TEMPLATE" "$BUILD_SCRIPT" "$SCRIPT_DIR/Test-OnlineInstaller.sh"
-sh "$BUILD_SCRIPT" >/dev/null
+sh -n "$TEMPLATE" "$SCRIPT_DIR/Test-OnlineInstaller.sh"
+(CDPATH= cd "$SCRIPT_DIR" && tr -d '\r' < "$BUILD_SCRIPT" | sh -n)
+(CDPATH= cd "$SCRIPT_DIR" && tr -d '\r' < "$BUILD_SCRIPT" | sh) >/dev/null
 [ -s "$BOOTSTRAP" ] || fail 'generated bootstrap is missing'
 [ -s "$BUNDLE" ] || fail 'generated fallback bundle is missing'
-sh -n "$BOOTSTRAP"
+contains '/usr/bin/kvm-switch --validate-config' "$BOOTSTRAP"
+CONFIG_BOOTSTRAP="$TMP_ROOT/config-installer.sh"
+sed "s|/usr/bin/kvm-switch|$FAKE_BIN/kvm-switch|g" "$BOOTSTRAP" > "$CONFIG_BOOTSTRAP"
+chmod 0755 "$CONFIG_BOOTSTRAP"
+sh -n "$BOOTSTRAP" "$CONFIG_BOOTSTRAP"
 
 deb_hash_line=$($REAL_SHA256SUM "$DEB_PATH")
 deb_hash=${deb_hash_line%% *}
 config_hash_line=$($REAL_SHA256SUM "$CONFIG_SOURCE")
 config_hash=${config_hash_line%% *}
-PACKAGE_URL="https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.1/$DEB_NAME"
-BUNDLE_URL='https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.1/kvm-switcher-debian.zip'
+PACKAGE_URL="https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.2/$DEB_NAME"
+BUNDLE_URL='https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.2/kvm-switcher-debian.zip'
 contains "$PACKAGE_URL" "$BOOTSTRAP"
 contains "$BUNDLE_URL" "$BOOTSTRAP"
 contains "$deb_hash" "$BOOTSTRAP"
 not_contains '@PACKAGE_URL@' "$BOOTSTRAP"
-not_contains 'apply-config' "$BOOTSTRAP"
-not_contains 'config.json' "$BOOTSTRAP"
+contains 'Export Debian install bundle...' "$BOOTSTRAP"
+contains 'sh ./install.sh --apply-config' "$BOOTSTRAP"
 
 printf '%s\n' "$DEB_NAME" config.json install.sh README.md LICENSE SHA256SUMS > "$TMP_ROOT/expected-entries"
 unzip -Z1 "$BUNDLE" > "$TMP_ROOT/actual-entries"
@@ -179,14 +234,34 @@ reset_case() {
     if [ "$FAKE_MODE" = apt-installs-adduser ]; then
         rm -f "$FAKE_BIN/adduser"
     fi
+    if [ "$FAKE_MODE" = validator-failure ]; then
+        FAKE_VALIDATOR_MODE=validator-failure
+    else
+        FAKE_VALIDATOR_MODE=valid
+    fi
+    export FAKE_VALIDATOR_MODE
+}
+
+reset_config_sentinel() {
+    printf '%s\n' 'sentinel-existing-config' > "$SENTINEL_FILE"
+    cp "$SENTINEL_FILE" "$FAKE_CONFIG_TARGET"
+}
+
+assert_config_sentinel() {
+    cmp -s "$SENTINEL_FILE" "$FAKE_CONFIG_TARGET" || fail 'existing config sentinel was changed'
+}
+
+run_failure_with() {
+    bootstrap=$1
+    output=$2
+    shift 2
+    if sh "$bootstrap" "$@" > "$output" 2>&1; then
+        fail "installer unexpectedly succeeded: $*"
+    fi
 }
 
 run_failure() {
-    output=$1
-    shift
-    if sh "$BOOTSTRAP" "$@" > "$output" 2>&1; then
-        fail "installer unexpectedly succeeded: $*"
-    fi
+    run_failure_with "$BOOTSTRAP" "$@"
 }
 
 reset_case success
@@ -210,6 +285,96 @@ fi
 contains 'KVM Switcher installed successfully.' "$TMP_ROOT/apt-installs-adduser.out"
 contains "adduser $TEST_ACCOUNT kvmswitch" "$FAKE_LOG"
 [ "$(count_log_entries sudo)" -eq 2 ] || fail 'apt-supplied adduser case did not complete both sudo calls'
+assert_temp_cleanup
+
+reset_case config-success
+reset_config_sentinel
+if ! sh "$CONFIG_BOOTSTRAP" --config "$CONFIG_FILE" > "$TMP_ROOT/config-success.out" 2>&1; then
+    fail 'config-mode installer success case failed'
+fi
+cmp -s "$CONFIG_FILE" "$FAKE_CONFIG_TARGET" || fail 'config-mode installer did not apply exact config bytes'
+contains 'kvm-switch --validate-config' "$FAKE_LOG"
+assert_no_log_entry hid
+contains "adduser $TEST_ACCOUNT kvmswitch" "$FAKE_LOG"
+[ "$(count_log_entries sudo)" -eq 3 ] || fail 'config-mode success did not complete apt, copy, and adduser'
+assert_temp_cleanup
+
+reset_case validator-failure
+reset_config_sentinel
+run_failure_with "$CONFIG_BOOTSTRAP" "$TMP_ROOT/validator-failure.out" --config "$CONFIG_FILE"
+contains 'config validation failed after package installation' "$TMP_ROOT/validator-failure.out"
+assert_config_sentinel
+assert_no_log_entry install
+assert_no_log_entry mv
+assert_no_log_entry adduser
+[ "$(count_log_entries sudo)" -eq 1 ] || fail 'invalid config did not stop before atomic copy and adduser'
+assert_temp_cleanup
+
+reset_case atomic-failure
+reset_config_sentinel
+run_failure_with "$CONFIG_BOOTSTRAP" "$TMP_ROOT/atomic-failure.out" --config "$CONFIG_FILE"
+contains 'config application failed after validation' "$TMP_ROOT/atomic-failure.out"
+assert_config_sentinel
+assert_no_log_entry adduser
+assert_temp_cleanup
+
+reset_case apt-failure-config
+reset_config_sentinel
+run_failure_with "$CONFIG_BOOTSTRAP" "$TMP_ROOT/apt-failure-config.out" --config "$CONFIG_FILE"
+assert_config_sentinel
+assert_no_log_entry kvm-switch
+assert_no_log_entry install
+assert_no_log_entry mv
+assert_no_log_entry adduser
+[ "$(count_log_entries sudo)" -eq 1 ] || fail 'config apt failure did not stop before validation and copy'
+assert_temp_cleanup
+
+reset_case config-download-failure
+run_failure_with "$CONFIG_BOOTSTRAP" "$TMP_ROOT/config-download-failure.out" --config "$CONFIG_FILE"
+contains 'Export Debian install bundle...' "$TMP_ROOT/config-download-failure.out"
+contains 'sh ./install.sh --apply-config' "$TMP_ROOT/config-download-failure.out"
+assert_no_log_entry sudo
+[ "$(count_log_entries wget)" -eq 1 ] || fail 'config download failure did not make exactly one wget call'
+assert_temp_cleanup
+
+reset_case config-hash-mismatch
+run_failure_with "$CONFIG_BOOTSTRAP" "$TMP_ROOT/config-hash-mismatch.out" --config "$CONFIG_FILE"
+contains 'Export Debian install bundle...' "$TMP_ROOT/config-hash-mismatch.out"
+contains 'sh ./install.sh --apply-config' "$TMP_ROOT/config-hash-mismatch.out"
+assert_no_log_entry sudo
+[ "$(count_log_entries wget)" -eq 1 ] || fail 'config hash failure did not make exactly one wget call'
+assert_temp_cleanup
+
+reset_case success
+run_failure "$TMP_ROOT/missing-config.out" --config "$TMP_ROOT/missing-config.json"
+contains 'regular readable file' "$TMP_ROOT/missing-config.out"
+assert_no_log_entry wget
+assert_no_log_entry sudo
+assert_temp_cleanup
+
+reset_case validator-failure
+reset_config_sentinel
+run_failure_with "$CONFIG_BOOTSTRAP" "$TMP_ROOT/malformed-config.out" --config "$MALFORMED_CONFIG"
+contains 'config validation failed after package installation' "$TMP_ROOT/malformed-config.out"
+assert_config_sentinel
+assert_no_log_entry install
+assert_no_log_entry mv
+assert_no_log_entry adduser
+[ "$(count_log_entries sudo)" -eq 1 ] || fail 'malformed config did not stop after installed validation'
+assert_temp_cleanup
+
+reset_case success
+run_failure "$TMP_ROOT/empty-config.out" --config "$EMPTY_CONFIG"
+contains 'nonempty regular readable file' "$TMP_ROOT/empty-config.out"
+assert_no_log_entry wget
+assert_no_log_entry sudo
+assert_temp_cleanup
+
+reset_case success
+run_failure "$TMP_ROOT/nonregular-config.out" --config "$NONREGULAR_CONFIG"
+contains 'nonempty regular readable file' "$TMP_ROOT/nonregular-config.out"
+assert_no_log_entry wget
+assert_no_log_entry sudo
 assert_temp_cleanup
 
 reset_case download-failure

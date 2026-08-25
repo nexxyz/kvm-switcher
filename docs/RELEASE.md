@@ -1,6 +1,6 @@
 # Release gates
 
-KVM Switcher is not published automatically. Release `v0.8.1` is prepared for
+KVM Switcher is not published automatically. Release `v0.8.2` is prepared for
 the public repository `https://github.com/nexxyz/kvm-switcher` only after all
 gates pass.
 
@@ -20,7 +20,13 @@ gates pass.
    config.
    `artifacts/SHA256SUMS.txt` must contain exactly four lowercase entries for
    those four names. `artifacts/SHA256SUMS-debian.txt` must contain exactly one
-   lowercase entry for `kvm-switcher_0.8.1-1_all.deb`.
+   lowercase entry for `kvm-switcher_0.8.2-1_all.deb`.
+   The online bootstrap contract must also be checked in both modes: no
+   arguments install or upgrade with `--force-confold` and preserve the system
+   config; `--config PATH` validates the handed config with
+   `kvm-switch --validate-config` without HID I/O and atomically replaces
+   `/etc/kvm-switcher/config.json` only after package installation. Config mode
+   is a deliberate replacement, not a conffile-preserving upgrade.
 2. **Passive live-hardware FAT**: when the User and monitor are present, run
    `scripts/Run-LiveHardwareFat.ps1 -MonitorAwake`. It verifies all four
    release asset hashes and exact bundle contents, then runs the installed-free
@@ -40,14 +46,14 @@ gates pass.
 No automated script alone is full FAT. The full installed-product gate is
 reserved for all three automated gates plus the attended manual checklist.
 
-The Debian package is `kvm-switcher_0.8.1-1_all.deb`. Its release assets use
+The Debian package is `kvm-switcher_0.8.2-1_all.deb`. Its release assets use
 the immutable URLs below:
 
 ```text
-https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.1/install-kvm-switcher.sh
-https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.1/kvm-switcher_0.8.1-1_all.deb
-https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.1/SHA256SUMS-debian.txt
-https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.1/kvm-switcher-debian.zip
+https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.2/install-kvm-switcher.sh
+https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.2/kvm-switcher_0.8.2-1_all.deb
+https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.2/SHA256SUMS-debian.txt
+https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.2/kvm-switcher-debian.zip
 ```
 
 The latest bootstrap convenience URL is:
@@ -56,11 +62,25 @@ The latest bootstrap convenience URL is:
 https://github.com/nexxyz/kvm-switcher/releases/latest/download/install-kvm-switcher.sh
 ```
 
-The bootstrap embeds the package URL and final package SHA256, verifies the
-package before `sudo`, and recommends the immutable bundle plus
-`sh ./install.sh` when download or checksum verification fails. The bundle
-avoids GitHub during installation, but `apt` may still need distro
-dependencies; it is not a fully offline claim.
+The bootstrap embeds the immutable package URL and final package SHA256, and
+verifies the package before `sudo`. Its no-argument mode preserves the existing
+system config with `--force-confold`. Its `--config PATH` mode validates the
+handed config without HID I/O and then atomically replaces the system config;
+this replacement is deliberate and does not preserve the old config.
+
+Fallback semantics depend on how it was invoked. If the tray-generated config
+command cannot download or verify the package, it recommends the tray action
+**Export Debian install bundle...** and `sh ./install.sh --apply-config`, which
+carries the current tray config. A standalone no-argument bootstrap recommends
+the public immutable `kvm-switcher-debian.zip` and `sh ./install.sh`; that
+bundle contains frozen release config and is a no-config, package/default-
+preserving fallback, not a carrier for current tray config. The bundle avoids
+GitHub during installation, but `apt` may still need distro dependencies; it is
+not a fully offline claim.
+
+For release gates, inspect a tray command's config payload only structurally,
+by hash, or by decoding and checking a round trip. Do not expose the payload or
+decoded configuration in logs, copied reports, or other output unnecessarily.
 
 ## Publication procedure
 
@@ -70,14 +90,14 @@ The release has not been published by this repository workflow.
 
 ```sh
 gh auth status
-gh release create v0.8.1 --repo nexxyz/kvm-switcher \
-  --title "KVM Switcher v0.8.1" \
+gh release create v0.8.2 --repo nexxyz/kvm-switcher \
+  --title "KVM Switcher v0.8.2" \
   --notes "See the repository release notes and compatibility guidance." \
   artifacts/KvmSwitcher-Setup.exe \
   artifacts/KvmSwitcher-win-x64.zip \
   artifacts/install-kvm-switcher.sh \
   artifacts/kvm-switcher-debian.zip \
-  artifacts/kvm-switcher_0.8.1-1_all.deb \
+  artifacts/kvm-switcher_0.8.2-1_all.deb \
   artifacts/SHA256SUMS.txt \
   artifacts/SHA256SUMS-debian.txt
 ```
@@ -86,12 +106,12 @@ If the tag already has a release and only the frozen assets need uploading,
 use:
 
 ```sh
-gh release upload v0.8.1 --repo nexxyz/kvm-switcher --clobber \
+gh release upload v0.8.2 --repo nexxyz/kvm-switcher --clobber \
   artifacts/KvmSwitcher-Setup.exe \
   artifacts/KvmSwitcher-win-x64.zip \
   artifacts/install-kvm-switcher.sh \
   artifacts/kvm-switcher-debian.zip \
-  artifacts/kvm-switcher_0.8.1-1_all.deb \
+  artifacts/kvm-switcher_0.8.2-1_all.deb \
   artifacts/SHA256SUMS.txt \
   artifacts/SHA256SUMS-debian.txt
 ```
@@ -109,7 +129,7 @@ for asset in install-kvm-switcher.sh kvm-switcher-debian.zip; do
     "https://github.com/nexxyz/kvm-switcher/releases/latest/download/$asset"
 done
 wget --spider --https-only --timeout=30 --tries=1 \
-  https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.1/kvm-switcher_0.8.1-1_all.deb
+  https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.2/kvm-switcher_0.8.2-1_all.deb
 ```
 
 Also compare the published package with `SHA256SUMS-debian.txt`; never mix a

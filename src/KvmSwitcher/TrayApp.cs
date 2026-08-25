@@ -63,7 +63,7 @@ internal sealed class TrayApp : ApplicationContext
         };
         _debianInstallCommandItem = new ToolStripMenuItem("Copy Debian install command")
         {
-            ToolTipText = "Copy a command that downloads and runs the Debian installer"
+            ToolTipText = "Copy a Debian install command including the current configuration and default target"
         };
         _defaultTargetMenu = new ToolStripMenuItem("Default exported target")
         {
@@ -208,10 +208,11 @@ internal sealed class TrayApp : ApplicationContext
         var debianPackageAvailable = DebianBundleExporter.IsPackageAvailable();
         var canSwitch = _targets is not null && !_busy && !vendorRunning && deviceAvailable;
         var hasConfiguration = _targets is not null;
+        var canCopyDebianInstallCommand = CanCopyDebianInstallCommand(_busy, _targets);
 
         _switchMenu.Enabled = canSwitch;
         _useMenu.Enabled = !_busy;
-        _debianInstallCommandItem.Enabled = !_busy;
+        _debianInstallCommandItem.Enabled = canCopyDebianInstallCommand;
         _copyCommandMenu.Enabled = hasConfiguration && !_busy;
         _exportItem.Enabled = hasConfiguration && !_busy;
         _debianExportItem.Enabled = hasConfiguration && !_busy && debianPackageAvailable;
@@ -355,21 +356,29 @@ internal sealed class TrayApp : ApplicationContext
 
     private void CopyDebianInstallCommand()
     {
-        if (_busy)
+        if (!CanCopyDebianInstallCommand(_busy, _targets))
         {
             return;
         }
 
         try
         {
-            Clipboard.SetText(CommandText.ForDebianInstall());
-            SetStatus("Debian install command copied");
+            Clipboard.SetText(CommandText.ForDebianInstall(_targets!));
+            SetStatus("Debian install command copied with current configuration/default");
+        }
+        catch (ConfigException exception)
+        {
+            SetStatus(exception.Message);
+            ShowNotice(exception.Message);
         }
         catch
         {
             SetStatus("Copy failed");
         }
     }
+
+    internal static bool CanCopyDebianInstallCommand(bool busy, IReadOnlyList<Target>? targets) =>
+        !busy && targets is not null && targets.Count(target => target is not null && target.IsDefault) == 1;
 
     private void OpenConfiguration()
     {

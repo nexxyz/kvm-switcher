@@ -87,7 +87,7 @@ if (-not (Test-Path -LiteralPath $staging -PathType Container)) {
 }
 Assert-File -Path $iss -Label "Inno Setup script"
 
-$requiredFiles = @("KvmSwitcher.exe", "KvmSwitcher.dll", "KvmSwitcher.deps.json", "KvmSwitcher.runtimeconfig.json", "HidSharp.dll", "kvm-switcher_0.8.1-1_all.deb", "LICENSE", "THIRD-PARTY-NOTICES.txt")
+$requiredFiles = @("KvmSwitcher.exe", "KvmSwitcher.dll", "KvmSwitcher.deps.json", "KvmSwitcher.runtimeconfig.json", "HidSharp.dll", "kvm-switcher_0.8.2-1_all.deb", "LICENSE", "THIRD-PARTY-NOTICES.txt")
 foreach ($fileName in $requiredFiles) {
     Assert-File -Path (Join-Path $staging $fileName) -Label ("published " + $fileName)
 }

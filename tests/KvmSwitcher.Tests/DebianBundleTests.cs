@@ -21,7 +21,7 @@ public sealed class DebianBundleTests
         Assert.Equal(
             new[]
             {
-                "kvm-switcher_0.8.1-1_all.deb",
+                "kvm-switcher_0.8.2-1_all.deb",
                 "config.json",
                 "install.sh",
                 "README.md",
@@ -56,7 +56,7 @@ public sealed class DebianBundleTests
         Assert.Equal(
             string.Concat(
                 Convert.ToHexString(SHA256.HashData(package)).ToLowerInvariant(),
-                "  kvm-switcher_0.8.1-1_all.deb\n",
+                "  kvm-switcher_0.8.2-1_all.deb\n",
                 Convert.ToHexString(SHA256.HashData(config)).ToLowerInvariant(),
                 "  config.json\n"),
             manifest);

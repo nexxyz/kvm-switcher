@@ -1,3 +1,9 @@
+kvm-switcher (0.8.2-1) unstable; urgency=medium
+
+  * Carry the tray configuration and selected default through the online Debian installer.
+
+ -- nexxyz <nexxyz@users.noreply.github.com>  Tue, 25 Aug 2026 22:57:29 +0000
+
 kvm-switcher (0.8.1-1) unstable; urgency=medium
 
   * Allow apt to install the adduser dependency during online setup.

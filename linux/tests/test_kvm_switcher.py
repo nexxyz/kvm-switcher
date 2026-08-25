@@ -107,6 +107,63 @@ class KvmSwitcherTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "KVM_SWITCHER_CONFIG"):
                 kvmSwitcher._default_config_path()
 
+    def test_validate_config_is_semantic_and_never_loads_hid(self):
+        directory, config_path = write_config(
+            {
+                "targets": [
+                    {"name": "Raspberry", "input": "hdmi1", "kvm": "typec"}
+                ]
+            }
+        )
+        self.addCleanup(directory.cleanup)
+        output = io.StringIO()
+        errors = io.StringIO()
+        with patch.object(
+            kvmSwitcher, "_load_hid", side_effect=AssertionError("loaded HID")
+        ) as loader, contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
+            code = kvmSwitcher.main(["--validate-config", str(config_path)], None)
+
+        self.assertEqual(code, 0)
+        self.assertEqual(output.getvalue(), "")
+        self.assertEqual(errors.getvalue(), "")
+        loader.assert_not_called()
+
+    def test_validate_config_rejects_malformed_input_before_hid(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        config_path = Path(directory.name) / "config.json"
+        config_path.write_text('{"targets":', encoding="utf-8")
+        errors = io.StringIO()
+        with patch.object(
+            kvmSwitcher, "_load_hid", side_effect=AssertionError("loaded HID")
+        ), contextlib.redirect_stderr(errors):
+            code = kvmSwitcher.main(["--validate-config", str(config_path)], None)
+
+        self.assertEqual(code, 2)
+        self.assertIn("invalid config", errors.getvalue())
+
+    def test_validate_config_rejects_operational_arguments(self):
+        directory, config_path = write_config(
+            {"targets": [{"name": "A", "input": "dp", "kvm": "upstream"}]}
+        )
+        self.addCleanup(directory.cleanup)
+        for extra in (
+            ["--probe-hardware"],
+            ["--profile", "A"],
+            ["--input", "dp"],
+            ["--kvm", "upstream"],
+            ["--config", str(config_path)],
+        ):
+            with self.subTest(extra=extra):
+                with patch.object(
+                    kvmSwitcher, "_load_hid", side_effect=AssertionError("loaded HID")
+                ):
+                    with self.assertRaises(SystemExit) as raised:
+                        kvmSwitcher.main(
+                            ["--validate-config", str(config_path), *extra], None
+                        )
+                self.assertEqual(raised.exception.code, 2)
+
     def test_fixed_frames_are_exactly_64_bytes(self):
         expected = (
             (kvmSwitcher.DISPLAY_DP_FRAME, b"5b00500002\r"),

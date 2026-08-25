@@ -1,10 +1,11 @@
 #!/bin/sh
 set -eu
 
-PACKAGE_NAME='kvm-switcher_0.8.1-1_all.deb'
+PACKAGE_NAME='kvm-switcher_0.8.2-1_all.deb'
 PACKAGE_URL='@PACKAGE_URL@'
 BUNDLE_URL='@BUNDLE_URL@'
 EXPECTED_SHA256='@DEB_SHA256@'
+config_path=
 
 fail() {
     printf '%s\n' "error: $*" >&2
@@ -12,13 +13,28 @@ fail() {
 }
 
 recommend_bundle() {
+    if [ -n "$config_path" ]; then
+        printf '%s\n' 'The online package could not be downloaded or verified.' >&2
+        printf '%s\n' 'Use the tray action "Export Debian install bundle..." and then run: sh ./install.sh --apply-config' >&2
+        exit 1
+    fi
     printf '%s\n' 'The online package could not be downloaded or verified.' >&2
     printf '%s\n' "Use the immutable Debian bundle: $BUNDLE_URL" >&2
     printf '%s\n' 'Extract the bundle and run: sh ./install.sh' >&2
     exit 1
 }
 
-[ "$#" -eq 0 ] || fail 'this installer does not accept arguments'
+case "$#" in
+    0) ;;
+    2)
+        [ "$1" = '--config' ] || fail 'this installer does not accept arguments'
+        config_path=$2
+        [ -f "$config_path" ] && [ -r "$config_path" ] && [ -s "$config_path" ] || fail 'config must be a nonempty regular readable file'
+        ;;
+    *)
+        fail 'this installer does not accept arguments'
+        ;;
+esac
 
 for command_name in wget mktemp sha256sum sudo env apt-get id; do
     command -v "$command_name" >/dev/null 2>&1 || fail "required command is missing: $command_name"
@@ -48,6 +64,30 @@ actual_sha256=${checksum_line%% *}
 if ! sudo env DEBIAN_FRONTEND=noninteractive apt-get -y \
     -o Dpkg::Options::=--force-confold install "$package_path"; then
     fail 'package installation failed; the invoking account was not added to kvmswitch'
+fi
+
+if [ -n "$config_path" ]; then
+    if ! /usr/bin/kvm-switch --validate-config "$config_path"; then
+        fail 'config validation failed after package installation; the existing config was not changed and the invoking account was not added to kvmswitch'
+    fi
+    if ! sudo env KVM_SWITCHER_CONFIG_SOURCE="$config_path" /bin/sh -c '
+        set -eu
+        target=/etc/kvm-switcher/config.json
+        directory=${target%/*}
+        temporary=
+        cleanup() {
+            if [ -n "$temporary" ]; then
+                rm -f "$temporary" || :
+            fi
+        }
+        trap cleanup 0 1 2 3 15
+        temporary=$(mktemp "$directory/.config.json.XXXXXX")
+        install -o root -g root -m 0644 "$KVM_SWITCHER_CONFIG_SOURCE" "$temporary"
+        mv -f "$temporary" "$target"
+        temporary=
+    '; then
+        fail 'config application failed after validation; the existing config was not changed and the invoking account was not added to kvmswitch'
+    fi
 fi
 
 if ! sudo adduser "$account" kvmswitch; then

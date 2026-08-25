@@ -296,6 +296,7 @@ def _parser() -> argparse.ArgumentParser:
     modes.add_argument("--probe-hardware", action="store_true")
     modes.add_argument("--profile", metavar="NAME")
     modes.add_argument("--input", choices=("dp", "hdmi1"))
+    modes.add_argument("--validate-config", metavar="PATH")
     parser.add_argument("--kvm", choices=("upstream", "typec"))
     parser.add_argument("--config", metavar="PATH")
     return parser
@@ -318,6 +319,21 @@ def _format_result(result: SendResult) -> str:
 def main(argv: Optional[Sequence[str]] = None, hid_module: Any = None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
+    if args.validate_config is not None:
+        if (
+            args.probe_hardware
+            or args.profile is not None
+            or args.input is not None
+            or args.kvm is not None
+            or args.config is not None
+        ):
+            parser.error("--validate-config does not accept operational arguments")
+        try:
+            load_config(Path(args.validate_config))
+        except ValueError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        return 0
     if args.probe_hardware:
         if args.kvm is not None or args.config is not None:
             parser.error("--probe-hardware does not accept --kvm or --config")

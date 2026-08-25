@@ -102,31 +102,48 @@ does not claim independently confirmed monitor state.
 
 ## Online Debian installer
 
-The tray's **Use on another host > Copy Debian install command** copies this
-one-line command for the current online release:
+The tray's **Use on another host > Copy Debian install command** copies a
+generated one-line command. It is generated from the current validated,
+normalized configuration, not from a static command. The action requires
+exactly one target selected under **Default exported target**; that target is
+the one marked `"default": true` in the handed configuration.
 
-```sh
-sh -c 'f=$(mktemp) || exit 1; trap "rm -f \"$f\"" 0; if ! wget --https-only -T 30 -t 1 -O "$f" "https://github.com/nexxyz/kvm-switcher/releases/latest/download/install-kvm-switcher.sh" || [ ! -s "$f" ]; then printf "%s\n" "Download failed or empty; download the Debian bundle instead: https://github.com/nexxyz/kvm-switcher/releases/latest/download/kvm-switcher-debian.zip" >&2; exit 1; fi; sh "$f"'
-```
+The command carries that configuration as base64-encoded UTF-8. This is only a
+shell-safe transport encoding, not secrecy: the payload can be decoded by
+anyone who can read the shell history. It creates a temporary `config.json`,
+downloads the latest bootstrap from
+`https://github.com/nexxyz/kvm-switcher/releases/latest/download/install-kvm-switcher.sh`,
+and passes the file to the bootstrap with `--config`.
 
-The bootstrap is intended for a normal, non-root account. For release `v0.8.1`
+The bootstrap is intended for a normal, non-root account. For release `v0.8.2`
 it downloads the immutable package
-`https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.1/kvm-switcher_0.8.1-1_all.deb`,
-checks its embedded SHA256, and only then uses `sudo apt-get` with the existing
-configuration preserved. The matching one-entry checksum file is
-`https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.1/SHA256SUMS-debian.txt`;
+`https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.2/kvm-switcher_0.8.2-1_all.deb`,
+checks its embedded SHA256, and only then uses `sudo apt-get` with the package
+operation using `--force-confold`. In tray config mode, it then runs
+`kvm-switch --validate-config` on the handed file without HID I/O and atomically
+replaces `/etc/kvm-switcher/config.json` with that validated file. This
+replacement is deliberate: config mode does **not** preserve the old system
+configuration. No-argument standalone bootstrap runs and package upgrades keep
+the `--force-confold` behavior and preserve the existing system configuration.
+
+The matching one-entry checksum file is
+`https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.2/SHA256SUMS-debian.txt`;
 do not mix assets from different release tags.
 
-If GitHub or the package download is unavailable, use the matching
-`kvm-switcher-debian.zip` release asset instead:
+If the tray command cannot download its bootstrap or package, use the tray
+action **Export Debian install bundle...** and run `sh ./install.sh --apply-config`.
+That tray-exported bundle carries the same current configuration. If the public
+release asset is the available fallback, use the matching `kvm-switcher-debian.zip`:
 
 ```text
-https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.1/kvm-switcher-debian.zip
+https://github.com/nexxyz/kvm-switcher/releases/download/v0.8.2/kvm-switcher-debian.zip
 ```
 
-Extract it and run `sh ./install.sh`. The bundle avoids GitHub during its
-installation, but `apt` may still need to download distro dependencies. It is
-not a claim of a fully offline install.
+The public release bundle contains its frozen v0.8.2 release configuration; it
+does not carry the current tray configuration. Extract it and run
+`sh ./install.sh` for the package/default-preserving, no-config fallback. The
+bundle avoids GitHub during its installation, but `apt` may still need to
+download distro dependencies. It is not a claim of a fully offline install.
 
 ## Portable bundle
 
@@ -178,20 +195,25 @@ not issue a compensating software write.
 The Windows tray can export a Debian install bundle containing the current
 configuration, an architecture-independent `.deb`, an installation helper,
 instructions, and checksums. Copy and extract the ZIP on Debian or Raspberry Pi
-OS, then run:
+OS. For this tray-exported, config-carrying bundle, run:
+
+```sh
+sh ./install.sh --apply-config
+```
+
+Fresh installs and upgrades receive or preserve the Debian package conffile;
+the helper does not apply the exported configuration implicitly. Existing
+configuration is preserved during package updates. The public release bundle
+instead uses the no-config fallback:
 
 ```sh
 sh ./install.sh
 ```
 
-Fresh installs and upgrades receive or preserve the Debian package conffile;
-the helper does not apply the exported configuration implicitly. Existing
-configuration is preserved during package updates. Apply the exported config
-explicitly when desired:
-
-```sh
-sh ./install.sh --apply-config
-```
+This tray-exported bundle is the config-carrying fallback. It is distinct from
+the public `kvm-switcher-debian.zip` release asset, which contains a frozen
+release configuration and does not carry the current tray configuration; use
+`sh ./install.sh` on that asset as the no-config fallback.
 
 After installation, log in again if group membership changed and unplug and
 replug the monitor USB path. The Debian rules grant `kvmswitch` access to both
@@ -200,8 +222,8 @@ system config is `/etc/kvm-switcher/config.json`.
 
 The Debian package default under `/etc` is intentionally frozen; portable and
 exported example configs may evolve independently. Existing configuration wins
-during helper upgrades. After an install or upgrade, reboot or use the attended
-`sudo udevadm control --reload-rules` command, then unplug and replug the
+during no-config helper upgrades. After an install or upgrade, reboot or use the
+attended `sudo udevadm control --reload-rules` command, then unplug and replug the
 monitor USB path. A one-time upgrade from an older package that installed a
 postrm may still run that old removal hook, so keep storage stable and
 disconnect the HDMI/monitor USB path during that transition. Future package
