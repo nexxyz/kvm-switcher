@@ -20,6 +20,9 @@ linux/config.json
 **/config.json
 !packaging/debian/config.json
 
+# Local agent tooling state
+.omc/
+
 # Editor and OS files
 .vs/
 .vscode/

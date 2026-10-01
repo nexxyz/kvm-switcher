@@ -4,8 +4,10 @@ namespace KvmSwitcher;
 
 internal static class ProcessGuard
 {
-    internal static bool IsVendorRunning() =>
-        Exists("GamingIntelligence") || Exists("MonitorMicroKeyDetector");
+    internal static bool IsVendorRunning() => IsVendorRunning(Exists);
+
+    internal static bool IsVendorRunning(Func<string, bool> processExists) =>
+        processExists("GamingIntelligence") || processExists("MonitorMicroKeyDetector");
 
     internal static bool Exists(string processName)
     {

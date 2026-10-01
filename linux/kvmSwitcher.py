@@ -91,10 +91,12 @@ def load_config(path: Path) -> List[Tuple[str, str, str, bool]]:
 
         input_name = target["input"]
         kvm_name = target["kvm"]
-        if not isinstance(input_name, str) or input_name not in {"dp", "hdmi1"}:
+        if not isinstance(input_name, str) or input_name.lower() not in {"dp", "hdmi1"}:
             raise _invalid(f"target {index} input must be dp or hdmi1")
-        if not isinstance(kvm_name, str) or kvm_name not in {"upstream", "typec"}:
+        if not isinstance(kvm_name, str) or kvm_name.lower() not in {"upstream", "typec"}:
             raise _invalid(f"target {index} kvm must be upstream or typec")
+        input_name = input_name.lower()
+        kvm_name = kvm_name.lower()
         if "hotkey" in target and not isinstance(target["hotkey"], str):
             raise _invalid(f"target {index} hotkey must be a string")
         is_default = target.get("default", False)

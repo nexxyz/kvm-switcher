@@ -13,7 +13,7 @@ internal sealed class ProfileSwitcher
 
     internal SwitchResult Switch(Target target)
     {
-        if (_processExists("GamingIntelligence") || _processExists("MonitorMicroKeyDetector"))
+        if (ProcessGuard.IsVendorRunning(_processExists))
         {
             return new SwitchResult(
                 target.Name,
