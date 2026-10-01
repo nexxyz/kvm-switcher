@@ -78,7 +78,7 @@ fi
 if [ "$INSTALL_COMMANDS" -eq 1 ]; then
     LOCAL_BIN=${HOME}/.local/bin
     mkdir -p "$LOCAL_BIN"
-    if [ ! -f "$BUNDLE_DIR/config.json" ]; then
+    if [ ! -f "$BUNDLE_DIR/config.json" ] && [ -f "$BUNDLE_DIR/config.example.json" ]; then
         cp "$BUNDLE_DIR/config.example.json" "$BUNDLE_DIR/config.json"
         printf '%s\n' "Created $BUNDLE_DIR/config.json from config.example.json; edit it before profile use."
     fi

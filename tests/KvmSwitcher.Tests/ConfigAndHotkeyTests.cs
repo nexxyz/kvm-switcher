@@ -172,6 +172,23 @@ public sealed class ConfigAndHotkeyTests
         Assert.False(HotkeyParser.TryParse(value, out _));
     }
 
+    [Theory]
+    [InlineData("{\"targets\":[", "invalid JSON")]
+    [InlineData("{\"targets\":[{\"name\":\"A\",\"input\":\"dp\",\"kvm\":\"upstream\"},{\"name\":\"B\",\"input\":\"vga\",\"kvm\":\"typec\"}]}", "target 2 input must be \"dp\" or \"hdmi1\"")]
+    [InlineData("{\"targets\":[{\"name\":\"A\",\"input\":\"dp\",\"kvm\":\"upstream\",\"extra\":1}]}", "target 1 has unknown property \"extra\"")]
+    [InlineData("{\"targets\":[{\"name\":\"A\",\"input\":\"dp\",\"kvm\":\"upstream\",\"hotkey\":\"Ctrl+P\"}]}", "target 'A' hotkey 'Ctrl+P' is invalid")]
+    [InlineData("{\"targets\":[{\"name\":\"A\",\"input\":\"dp\",\"kvm\":\"upstream\"},{\"name\":\"a\",\"input\":\"dp\",\"kvm\":\"typec\"}]}", "target name 'a' is used more than once")]
+    public void Config_errors_name_the_problem(string json, string expected)
+    {
+        using var directory = new TemporaryDirectory();
+        var store = new ConfigStore(System.IO.Path.Combine(directory.Path, "config.json"));
+
+        var exception = Assert.Throws<ConfigException>(() => WriteAndLoad(store, json));
+
+        Assert.StartsWith("Configuration error: ", exception.Message, StringComparison.Ordinal);
+        Assert.Contains(expected, exception.Message, StringComparison.Ordinal);
+    }
+
     private static IReadOnlyList<Target> WriteAndLoad(ConfigStore store, string json)
     {
         File.WriteAllText(store.Path, json);

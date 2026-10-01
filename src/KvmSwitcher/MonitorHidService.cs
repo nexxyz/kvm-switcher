@@ -63,14 +63,6 @@ internal sealed class MonitorHidService : IHidCommandTransport
                 outcome = CommandOutcome.ExpectedDisconnect;
             }
         }
-        catch (IOException)
-        {
-            outcome = CommandOutcome.Failed;
-        }
-        catch (TimeoutException)
-        {
-            outcome = CommandOutcome.Failed;
-        }
         catch (Exception)
         {
             outcome = CommandOutcome.Failed;

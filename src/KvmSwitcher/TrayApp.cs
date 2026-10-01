@@ -151,7 +151,7 @@ internal sealed class TrayApp : ApplicationContext
                 ? ReadyStatus
                 : $"Ready — {unavailable} hotkey(s) unavailable");
         }
-        catch (Exception)
+        catch (Exception exception)
         {
             _targets = null;
             _unavailableHotkeys = 0;
@@ -160,7 +160,7 @@ internal sealed class TrayApp : ApplicationContext
             SetStatus(ConfigErrorStatus);
             if (showNotice)
             {
-                ShowNotice(ConfigErrorStatus);
+                ShowNotice(exception is ConfigException ? exception.Message : ConfigErrorStatus);
             }
         }
 

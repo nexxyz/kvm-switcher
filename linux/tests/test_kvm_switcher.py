@@ -128,6 +128,15 @@ class KvmSwitcherTests(unittest.TestCase):
         self.assertEqual(errors.getvalue(), "")
         loader.assert_not_called()
 
+    def test_input_and_kvm_values_are_case_insensitive_like_windows(self):
+        directory, config_path = write_config(
+            {"targets": [{"name": "Pi", "input": "HDMI1", "kvm": "TypeC"}]}
+        )
+        self.addCleanup(directory.cleanup)
+        self.assertEqual(
+            kvmSwitcher.load_config(config_path), [("Pi", "hdmi1", "typec", False)]
+        )
+
     def test_validate_config_rejects_malformed_input_before_hid(self):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)

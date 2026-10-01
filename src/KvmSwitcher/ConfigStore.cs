@@ -9,6 +9,8 @@ internal sealed class ConfigException : Exception
     internal ConfigException(string message) : base(message)
     {
     }
+
+    internal static ConfigException Invalid(string detail) => new("Configuration error: " + detail);
 }
 
 internal sealed class ConfigStore
@@ -34,28 +36,30 @@ internal sealed class ConfigStore
 
     internal IReadOnlyList<Target> LoadOrCreateDefault()
     {
-        if (!File.Exists(Path))
-        {
-            SaveAtomic(DefaultTargets, overwrite: false);
-        }
-
+        EnsureExists();
         return Load();
     }
 
     internal IReadOnlyList<Target> Load()
     {
+        string json;
         try
         {
-            using var document = JsonDocument.Parse(File.ReadAllText(Path));
+            json = File.ReadAllText(Path);
+        }
+        catch (Exception exception)
+        {
+            throw ConfigException.Invalid("cannot read file (" + exception.Message + ")");
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(json);
             return Parse(document.RootElement);
         }
-        catch (ConfigException)
+        catch (JsonException exception)
         {
-            throw;
-        }
-        catch (Exception)
-        {
-            throw new ConfigException("Configuration error");
+            throw ConfigException.Invalid("invalid JSON (" + exception.Message + ")");
         }
     }
 
@@ -67,14 +71,14 @@ internal sealed class ConfigStore
     {
         if (targets is null || targetName is null)
         {
-            throw new ConfigException("Configuration error");
+            throw ConfigException.Invalid("no targets loaded");
         }
 
         ValidateTargets(targets);
         var matches = targets.Count(target => string.Equals(target.Name, targetName, StringComparison.Ordinal));
         if (matches != 1)
         {
-            throw new ConfigException("Configuration error");
+            throw ConfigException.Invalid($"target '{targetName}' was not found");
         }
 
         var updated = targets
@@ -120,7 +124,7 @@ internal sealed class ConfigStore
         if (input is not (TargetInput.Dp or TargetInput.Hdmi1) ||
             kvm is not (TargetKvm.Upstream or TargetKvm.TypeC))
         {
-            throw new ConfigException("Configuration error");
+            throw ConfigException.Invalid($"target '{normalizedName}' has an unsupported input or kvm");
         }
 
         HotkeySpec? normalizedHotkey = null;
@@ -132,7 +136,8 @@ internal sealed class ConfigStore
             }
             catch (HotkeyFormatException)
             {
-                throw new ConfigException("Configuration error");
+                throw ConfigException.Invalid(
+                    $"target '{normalizedName}' hotkey '{hotkey}' is invalid; use at least two of Ctrl, Shift, Alt, Win plus one A-Z, 0-9 or F1-F24 key");
             }
         }
 
@@ -150,7 +155,7 @@ internal sealed class ConfigStore
         var directory = System.IO.Path.GetDirectoryName(Path);
         if (string.IsNullOrEmpty(directory))
         {
-            throw new ConfigException("Configuration error");
+            throw ConfigException.Invalid("invalid configuration path");
         }
 
         Directory.CreateDirectory(directory);
@@ -175,10 +180,10 @@ internal sealed class ConfigStore
             TryDelete(temporaryPath);
             throw;
         }
-        catch (Exception)
+        catch (Exception exception)
         {
             TryDelete(temporaryPath);
-            throw new ConfigException("Configuration error");
+            throw ConfigException.Invalid("cannot write file (" + exception.Message + ")");
         }
     }
 
@@ -186,53 +191,59 @@ internal sealed class ConfigStore
     {
         if (root.ValueKind != JsonValueKind.Object)
         {
-            throw new ConfigException("Configuration error");
+            throw ConfigException.Invalid("root must be a JSON object");
         }
 
         var rootProperties = root.EnumerateObject().ToArray();
         if (rootProperties.Length != 1 || rootProperties[0].Name != "targets" ||
             rootProperties[0].Value.ValueKind != JsonValueKind.Array)
         {
-            throw new ConfigException("Configuration error");
+            throw ConfigException.Invalid("root must contain only a \"targets\" array");
         }
 
         var targets = rootProperties[0].Value.EnumerateArray().Select(ParseTarget).ToList();
         if (targets.Count == 0)
         {
-            throw new ConfigException("Configuration error");
+            throw ConfigException.Invalid("targets must not be empty");
         }
 
         ValidateTargets(targets);
         return targets;
     }
 
-    private static Target ParseTarget(JsonElement value)
+    private static Target ParseTarget(JsonElement value, int index)
     {
+        var label = $"target {index + 1}";
         if (value.ValueKind != JsonValueKind.Object)
         {
-            throw new ConfigException("Configuration error");
+            throw ConfigException.Invalid(label + " must be a JSON object");
         }
 
         var properties = value.EnumerateObject().ToArray();
         var names = new HashSet<string>(StringComparer.Ordinal);
         foreach (var property in properties)
         {
-            if (!names.Add(property.Name) || property.Name is not ("name" or "input" or "kvm" or "hotkey" or "default"))
+            if (!names.Add(property.Name))
             {
-                throw new ConfigException("Configuration error");
+                throw ConfigException.Invalid($"{label} has duplicate property \"{property.Name}\"");
+            }
+
+            if (property.Name is not ("name" or "input" or "kvm" or "hotkey" or "default"))
+            {
+                throw ConfigException.Invalid($"{label} has unknown property \"{property.Name}\"");
             }
         }
 
-        var name = GetRequiredString(value, "name");
-        var input = GetRequiredString(value, "input");
-        var kvm = GetRequiredString(value, "kvm");
+        var name = GetRequiredString(value, "name", label);
+        var input = GetRequiredString(value, "input", label);
+        var kvm = GetRequiredString(value, "kvm", label);
         string? hotkey = null;
         var isDefault = false;
         if (value.TryGetProperty("hotkey", out var hotkeyElement))
         {
             if (hotkeyElement.ValueKind != JsonValueKind.String)
             {
-                throw new ConfigException("Configuration error");
+                throw ConfigException.Invalid(label + " hotkey must be a string");
             }
 
             hotkey = hotkeyElement.GetString();
@@ -241,7 +252,7 @@ internal sealed class ConfigStore
         {
             if (defaultElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
             {
-                throw new ConfigException("Configuration error");
+                throw ConfigException.Invalid(label + " default must be true or false");
             }
 
             isDefault = defaultElement.GetBoolean();
@@ -251,33 +262,33 @@ internal sealed class ConfigStore
         {
             "DP" => TargetInput.Dp,
             "HDMI1" => TargetInput.Hdmi1,
-            _ => throw new ConfigException("Configuration error")
+            _ => throw ConfigException.Invalid(label + " input must be \"dp\" or \"hdmi1\"")
         };
         var normalizedKvm = kvm.ToUpperInvariant() switch
         {
             "UPSTREAM" => TargetKvm.Upstream,
             "TYPEC" => TargetKvm.TypeC,
-            _ => throw new ConfigException("Configuration error")
+            _ => throw ConfigException.Invalid(label + " kvm must be \"upstream\" or \"typec\"")
         };
 
         return CreateTarget(name, normalizedInput, normalizedKvm, hotkey, isDefault);
     }
 
-    private static string GetRequiredString(JsonElement value, string propertyName)
+    private static string GetRequiredString(JsonElement value, string propertyName, string label)
     {
         if (!value.TryGetProperty(propertyName, out var element) || element.ValueKind != JsonValueKind.String)
         {
-            throw new ConfigException("Configuration error");
+            throw ConfigException.Invalid($"{label} requires a string \"{propertyName}\"");
         }
 
-        return element.GetString() ?? throw new ConfigException("Configuration error");
+        return element.GetString()!;
     }
 
     private static void ValidateTargets(IReadOnlyList<Target> targets)
     {
         if (targets is null || targets.Count == 0 || targets.Any(target => target is null))
         {
-            throw new ConfigException("Configuration error");
+            throw ConfigException.Invalid("targets must not be empty");
         }
 
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -288,12 +299,12 @@ internal sealed class ConfigStore
             var name = ValidateName(target.Name);
             if (!names.Add(name))
             {
-                throw new ConfigException("Configuration error");
+                throw ConfigException.Invalid($"target name '{name}' is used more than once");
             }
 
             if (target.Hotkey is { } hotkey && !hotkeys.Add((hotkey.Modifiers, hotkey.VirtualKey)))
             {
-                throw new ConfigException("Configuration error");
+                throw ConfigException.Invalid($"hotkey {hotkey.Display} is used more than once");
             }
 
             if (target.IsDefault)
@@ -301,7 +312,7 @@ internal sealed class ConfigStore
                 defaultCount++;
                 if (defaultCount > 1)
                 {
-                    throw new ConfigException("Configuration error");
+                    throw ConfigException.Invalid("only one target may have \"default\": true");
                 }
             }
         }
@@ -311,13 +322,13 @@ internal sealed class ConfigStore
     {
         if (value.Any(char.IsControl))
         {
-            throw new ConfigException("Configuration error");
+            throw ConfigException.Invalid("target names must not contain control characters");
         }
 
         var name = value.Trim();
         if (name.Length == 0 || name.Length > 64)
         {
-            throw new ConfigException("Configuration error");
+            throw ConfigException.Invalid("target names must be 1 to 64 characters");
         }
 
         return name;
